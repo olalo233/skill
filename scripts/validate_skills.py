@@ -30,6 +30,10 @@ def unquote(value: str) -> str:
 
 def parse_frontmatter(path: Path) -> SkillMeta:
     text = path.read_text(encoding="utf-8")
+    if not text.endswith("\n"):
+        raise ValueError("file must end with exactly one newline")
+    if text.endswith("\n\n"):
+        raise ValueError("file must end with exactly one newline")
     lines = text.splitlines()
 
     if not lines or lines[0].strip() != "---":
@@ -84,13 +88,29 @@ def main() -> int:
         except (OSError, UnicodeError, ValueError) as exc:
             errors.append(f"{path.relative_to(ROOT)}: {exc}")
 
-    by_name: dict[str, list[Path]] = {}
+    by_kit_and_name: dict[tuple[str, str], list[Path]] = {}
+    skills_by_kit: dict[str, set[str]] = {}
     for skill in skills:
-        by_name.setdefault(skill.name, []).append(skill.path)
-    for name, duplicates in sorted(by_name.items()):
+        relative = skill.path.relative_to(ROOT)
+        kit = relative.parts[1]
+        by_kit_and_name.setdefault((kit, skill.name), []).append(skill.path)
+        skills_by_kit.setdefault(kit, set()).add(skill.name)
+
+    for (kit, name), duplicates in sorted(by_kit_and_name.items()):
         if len(duplicates) > 1:
             rendered = ", ".join(str(path.relative_to(ROOT)) for path in duplicates)
-            errors.append(f"duplicate skill name {name!r}: {rendered}")
+            errors.append(f"duplicate skill name {name!r} in kit {kit!r}: {rendered}")
+
+    reference_re = re.compile(r"`\$([a-z][a-z0-9-]*)`")
+    for skill in skills:
+        relative = skill.path.relative_to(ROOT)
+        kit = relative.parts[1]
+        body = skill.path.read_text(encoding="utf-8")
+        for referenced in sorted(set(reference_re.findall(body))):
+            if referenced not in skills_by_kit.get(kit, set()):
+                errors.append(
+                    f"{relative}: references missing same-kit skill ${referenced}"
+                )
 
     for kit_dir in sorted((ROOT / "kits").glob("*")):
         if not kit_dir.is_dir():
