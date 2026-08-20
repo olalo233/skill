@@ -1,0 +1,13 @@
+# HarnessKit / local build artifacts
+*.hk-kit.zip
+
+# macOS
+.DS_Store
+
+# Editors
+.idea/
+.vscode/
+
+# Local scratch
+.tmp/
+tmp/
