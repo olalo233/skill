@@ -101,7 +101,7 @@ For a state or control-flow change:
 -  write content
 +  if content is unchanged
 +    return cached result
-+  write content
++  write new content
 +  invalidate cache
 ```
 
