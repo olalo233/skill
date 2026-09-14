@@ -1,0 +1,5 @@
+interface:
+  display_name: "Grill Me"
+  short_description: "Clarify a bounded design in the current conversation"
+policy:
+  allow_implicit_invocation: false

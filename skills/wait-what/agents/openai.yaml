@@ -1,0 +1,5 @@
+interface:
+  display_name: "Wait, What? / 重新讲讲"
+  short_description: "Re-explain in clear Chinese or English without scope changes"
+policy:
+  allow_implicit_invocation: false

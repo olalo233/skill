@@ -1,0 +1,5 @@
+interface:
+  display_name: "Grilling"
+  short_description: "Interview method invoked explicitly or through grill-me"
+policy:
+  allow_implicit_invocation: false
