@@ -1,0 +1,92 @@
+{
+  "version": 1,
+  "sources": [
+    {
+      "repo": "mathbullet/skills",
+      "revision": "5ab997fcb8a80da4938bacb0a86cbd568e1018a7",
+      "paths": [
+        {
+          "source": "plugins/html/skills/html",
+          "destination": "skills/html"
+        },
+        {
+          "source": "LICENSE",
+          "destination": "licenses/mathbullet-skills-MIT.txt"
+        }
+      ],
+      "ref": "main"
+    },
+    {
+      "repo": "anthropics/claude-plugins-community",
+      "revision": "a727be1c7bd6064419b6f60d71993a19198adc17",
+      "paths": [
+        {
+          "source": "eli5/skills/eli5",
+          "destination": "skills/eli5"
+        },
+        {
+          "source": "LICENSE",
+          "destination": "licenses/claude-plugins-community-Apache-2.0.txt"
+        }
+      ],
+      "ref": "main"
+    },
+    {
+      "repo": "humanlayer/skills",
+      "revision": "ca7c8088db69e315a8b2deea43820270457f8f3c",
+      "paths": [
+        {
+          "source": "plugins/show-me/skills/show-me",
+          "destination": "skills/show-me"
+        },
+        {
+          "source": "LICENSE",
+          "destination": "licenses/humanlayer-skills-MIT.txt"
+        }
+      ],
+      "ref": "main"
+    },
+    {
+      "repo": "mattpocock/skills",
+      "revision": "c55ee46073ed923f86ce59a5eb3b6d895095d1b7",
+      "paths": [
+        {
+          "source": "skills/productivity/grill-me",
+          "destination": "skills/grill-me"
+        },
+        {
+          "source": "skills/productivity/grilling",
+          "destination": "skills/grilling"
+        },
+        {
+          "source": "skills/productivity/wait-what",
+          "destination": "skills/wait-what"
+        },
+        {
+          "source": "skills/engineering/prototype",
+          "destination": "skills/prototype"
+        },
+        {
+          "source": "LICENSE",
+          "destination": "licenses/mattpocock-skills-MIT.txt"
+        }
+      ],
+      "ref": "main"
+    },
+    {
+      "repo": "DietrichGebert/ponytail",
+      "revision": "e3ba2aa6f1e6f0bc4d69eb09c9f0d0a93af56156",
+      "paths": [
+        {
+          "source": "skills/ponytail-review",
+          "destination": "skills/ponytail-review"
+        },
+        {
+          "source": "LICENSE",
+          "destination": "licenses/ponytail-MIT.txt"
+        }
+      ],
+      "ref": "main"
+    }
+  ]
+}

@@ -1,0 +1,113 @@
+/* Shared appearance foundation. Copy this asset; author one layout using its tokens.
+   Role-based palette inspired by Radix Colors, with independent values for this kit. */
+:root {
+  color-scheme: light;
+  --mb-font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --mb-font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --mb-radius: 12px;
+  --mb-border-w: 1px;
+  --mb-bg: #FFFFFF;
+  --mb-surface: #FFFFFF;
+  --mb-subtle: #F5F6F8;
+  --mb-hover: #EEF0F3;
+  --mb-ink: #1C2024;
+  --mb-ink-body: #3B4048;
+  --mb-border: #DADDE2;
+  --mb-rule: #E8EAED;
+  --mb-control-border: #8B929E;
+  --mb-muted: #626B78;
+  --mb-faint: #626B78;
+  --mb-link: #225EC7;
+  --mb-accent: #BC3647;
+  --mb-code-bg: #F1F3F5;
+  --mb-code-keyword: #6550A5;
+  --mb-code-string: #236B4C;
+  --mb-add-bg: #E9F6ED;
+  --mb-add-ink: #267143;
+  --mb-del-bg: #FCEDEF;
+  --mb-del-ink: #B62C41;
+  --mb-series-1: #225EC7;
+  --mb-series-2: #A6531C;
+  --mb-series-3: #267143;
+  --mb-series-4: #6550A5;
+  --mb-shadow: 0 1px 2px rgb(20 24 32 / 4%);
+}
+@media screen and (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --mb-bg: #111315;
+    --mb-surface: #181B1F;
+    --mb-subtle: #1C2025;
+    --mb-hover: #252A31;
+    --mb-ink: #F0F2F4;
+    --mb-ink-body: #CFD3D9;
+    --mb-border: #373D46;
+    --mb-rule: #2A3038;
+    --mb-control-border: #697381;
+    --mb-muted: #A2ABB7;
+    --mb-faint: #A2ABB7;
+    --mb-link: #8DB7FF;
+    --mb-accent: #F298A4;
+    --mb-code-bg: #242A31;
+    --mb-code-keyword: #C4B3ED;
+    --mb-code-string: #96D3B1;
+    --mb-add-bg: #183626;
+    --mb-add-ink: #8DD5A4;
+    --mb-del-bg: #40232B;
+    --mb-del-ink: #F2A0AF;
+    --mb-series-1: #8DB7FF;
+    --mb-series-2: #E6AE80;
+    --mb-series-3: #8DD5A4;
+    --mb-series-4: #C4B3ED;
+    --mb-shadow: 0 1px 2px rgb(0 0 0 / 16%);
+  }
+}
+
+/* Lightweight defaults; document.css provides the optional reading layout. */
+* { box-sizing: border-box; }
+body {
+  background: var(--mb-bg);
+  color: var(--mb-ink-body);
+  font-family: var(--mb-font-sans);
+  line-height: 1.75;
+  -webkit-text-size-adjust: 100%;
+}
+a { color: var(--mb-link); text-underline-offset: .2em; text-decoration-thickness: 1px; }
+button, input, select, textarea { font: inherit; color: var(--mb-ink); accent-color: var(--mb-link); }
+button, select, textarea,
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="hidden"]) {
+  max-width: 100%;
+  min-height: 40px;
+  border: 1px solid var(--mb-control-border);
+  border-radius: 7px;
+  padding: 8px 12px;
+  background: var(--mb-surface);
+  font-size: 14px;
+  line-height: 1.4;
+}
+button { cursor: pointer; font-weight: 550; box-shadow: var(--mb-shadow); }
+button:hover:not(:disabled) { background: var(--mb-hover); }
+button:active:not(:disabled) { transform: translateY(1px); }
+select { padding-inline-end: 28px; }
+textarea { display: block; width: 100%; min-height: 96px; resize: vertical; }
+input[type="checkbox"], input[type="radio"] { width: 16px; height: 16px; margin: 0 .4em 0 0; vertical-align: -.15em; }
+input[type="range"] { max-width: 100%; }
+input::placeholder, textarea::placeholder { color: var(--mb-muted); opacity: 1; }
+:focus-visible { outline: 2px solid var(--mb-link); outline-offset: 3px; }
+:disabled { cursor: not-allowed; color: var(--mb-muted); opacity: .65; box-shadow: none; }
+.mb-surface { background: var(--mb-surface); color: var(--mb-ink-body); }
+code, kbd, samp { font-family: var(--mb-font-mono); font-size: .88em; }
+:not(pre) > code { background: var(--mb-code-bg); padding: .15em .38em; border-radius: 4px; }
+pre { background: var(--mb-subtle); color: var(--mb-ink-body); }
+pre code { background: transparent; padding: 0; }
+.mb-chart { color: var(--mb-ink); }
+.mb-original-image { background: #fff; color: #111; }
+
+/* Shared Highlight.js colors; layout and highlighted text use the same palette. */
+pre code.hljs { display: block; color: var(--mb-ink-body); background: transparent; }
+.hljs-comment, .hljs-quote, .hljs-meta, .hljs-doctag { color: var(--mb-muted); }
+.hljs-keyword, .hljs-selector-tag, .hljs-selector-id, .hljs-built_in, .hljs-type { color: var(--mb-code-keyword); }
+.hljs-string, .hljs-attr, .hljs-literal, .hljs-number, .hljs-regexp { color: var(--mb-code-string); }
+.hljs-title, .hljs-title.function_, .hljs-title.class_, .hljs-section, .hljs-name, .hljs-selector-class { color: var(--mb-link); }
+.hljs-variable, .hljs-property, .hljs-params, .hljs-symbol, .hljs-bullet { color: var(--mb-ink-body); }
+@media print { :root { color-scheme: light; } }

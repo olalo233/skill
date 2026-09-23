@@ -1,6 +1,6 @@
 # Sources
 
-This suite assembles upstream work. The four original skill bodies remain unchanged. Local adaptations are explicit below; do not present them as upstream defaults.
+This suite assembles upstream work. Local adaptations are explicit below; do not present them as upstream defaults. Machine-readable paths and current merge baselines live in `.sync/upstreams.json`.
 
 ## Workflow engine
 
@@ -17,7 +17,7 @@ This suite assembles upstream work. The four original skill bodies remain unchan
 ### Matt Pocock skills
 
 - Repository: `mattpocock/skills`
-- Reviewed/copied revision: `6654f6b60cd9d5be8b54c6fafe44346dabeb3b76`
+- Current merge baseline: `.sync/upstreams.json`.
 - Unmodified skill bodies:
   - `skills/productivity/grilling/`
   - `skills/engineering/prototype/`
@@ -31,14 +31,15 @@ This suite assembles upstream work. The four original skill bodies remain unchan
 ### HumanLayer show-me
 
 - Repository: `humanlayer/skills`
-- Revision: `3c2629142c5d437428269b1b722b08c0b87f574d`
+- Current merge baseline: `.sync/upstreams.json`.
 - Copied path: `plugins/show-me/skills/show-me/`
+- Local adaptation: system-following shared HTML appearance, sibling `html` dependency, and an original-vs-adapted appearance question for explicit recreations. Preserve automatic discovery rather than adopting upstream's newer manual-only policy.
 - License: MIT, preserved under `licenses/humanlayer-skills-MIT.txt`.
 
 ### Ponytail review
 
 - Repository: `DietrichGebert/ponytail`
-- Revision: `2ed6c52c9d7e5e56942508591085fd45dea277d3`
+- Current merge baseline: `.sync/upstreams.json`.
 - Copied path: `skills/ponytail-review/`
 - License: MIT, preserved under `licenses/ponytail-MIT.txt`.
 
@@ -65,3 +66,22 @@ Only the narrow review skill is bundled. The always-on Ponytail skill is not inc
 ## Update rule
 
 Review upstream diffs, preserve licenses, record local changes, and test a real bounded GSD phase before adopting an update broadly. Mainline promotion and structural checks are not evidence of successful execution in every Agent or in the user's HarnessKit installation.
+
+## HTML and explanations
+
+### mathbullet HTML
+
+- Repository: `mathbullet/skills`; path: `plugins/html/skills/html/`.
+- Baseline: `.sync/upstreams.json` (a reviewed reference snapshot, not a claim of identical content).
+- Local changes: English instructions with Chinese reading examples, system-following light/dark assets, redesigned typography/components, optional Canvas theme bridge, and portable asset reuse.
+- License: MIT, preserved in `licenses/mathbullet-skills-MIT.txt`.
+- The optional PDF helper currently targets macOS Chrome; ordinary HTML is browser-based and has no build requirement.
+
+### Anthropic community ELI5
+
+- Repository: `anthropics/claude-plugins-community`; path: `eli5/skills/eli5/`.
+- Baseline: `.sync/upstreams.json`.
+- Local changes: portable sibling `html` dependency, shared appearance contract and frontmatter cleanup. These modifications are not upstream defaults.
+- License: Apache-2.0, preserved in `licenses/claude-plugins-community-Apache-2.0.txt`. This skill retains that license; the repository's MIT license does not relicense it.
+
+Original repository maintenance code and original additions are MIT licensed. Bundled third-party materials retain their respective licenses and notices.

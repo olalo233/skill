@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>网页为什么需要两套配色？</title>
+<link rel="stylesheet" href="./document.css">
+<script src="./theme.js"></script>
+</head>
+<body>
+<main class="mb-page">
+<header class="mb-header">
+  <div>
+    <h1>网页为什么需要两套配色？</h1>
+    <p class="mb-lede">白天清晰，夜晚舒适。好的明暗适配，让内容保持熟悉，也让阅读更轻松。</p>
+    <p class="mb-meta-line">阅读约 3 分钟</p>
+  </div>
+</header>
+<nav class="mb-toc" aria-label="文章目录"><ol>
+<li><a href="#hierarchy">先建立层级</a></li><li><a href="#palette">为颜色命名</a></li><li><a href="#contrast">检查可读性</a></li><li><a href="#practice">试着读一段</a></li>
+</ol></nav>
+<div class="mb-wrap">
+<article class="mb-main">
+<h2 id="hierarchy">先建立层级，再考虑颜色</h2>
+<p>读一篇文章时，视线应该先找到标题，再自然地进入正文。标题、解释、图表和注释各有分量，不需要同样醒目。</p>
+<p>留白把段落分开，字重提示内容的重要性。边框只在确实需要区分区域时出现。这样，即使页面换成另一套配色，<strong>信息的顺序仍然清楚</strong>。</p>
+<blockquote class="mb-quote"><p>阅读界面的装饰，应当帮助内容被理解。</p></blockquote>
+<h2 id="palette">给颜色一个稳定的角色</h2>
+<p>同一个“正文色”，在浅色下接近深灰，在暗色下接近浅灰。内容引用这个角色，系统外观决定它最终呈现的颜色。</p>
+<figure class="mb-figure">
+<div class="mb-figure-frame">
+<ol class="mb-flow" aria-label="内容通过颜色角色连接到系统配色"><li>文章内容<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M4 12h15m-5-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></li><li>颜色角色<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M4 12h15m-5-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></li><li>系统外观</li></ol>
+</div>
+<figcaption>内容与布局保持不变，颜色随系统外观切换。</figcaption>
+</figure>
+<table><thead><tr><th scope="col">角色</th><th scope="col">使用位置</th><th scope="col">视觉分量</th></tr></thead><tbody>
+<tr><td class="mb-rowlabel">主要文字</td><td>标题、重要结论</td><td>最清晰</td></tr>
+<tr><td class="mb-rowlabel">正文文字</td><td>段落、列表、表格</td><td>清楚、稳定</td></tr>
+<tr><td class="mb-rowlabel">辅助文字</td><td>图注、日期、说明</td><td>安静但可读</td></tr>
+<tr><td class="mb-rowlabel">结构分隔</td><td>表格横线、区域边界</td><td>轻量</td></tr>
+</tbody></table>
+<p>例如，正文只需要引用两个变量。两套配色保存在共享样式里，不必再写一份页面。</p>
+<pre><code class="language-css"><span class="hljs-selector-tag">body</span> {
+  <span class="hljs-attr">background</span>: <span class="hljs-built_in">var</span>(--mb-bg);
+  <span class="hljs-attr">color</span>: <span class="hljs-built_in">var</span>(--mb-ink-body);
+}</code></pre>
+<h2 id="contrast">变暗之后，也要读得清楚</h2>
+<p>暗色模式不是把所有颜色反转。文字与背景需要足够的对比，分隔线则应退到内容之后。下面的图表根据当前页面的实际配色计算对比度。</p>
+<figure class="mb-figure">
+<div class="mb-figure-frame"><canvas id="contrast-chart" class="mb-chart-canvas" role="img" aria-label="当前主题的文字对比度"></canvas></div>
+<figcaption id="contrast-values" aria-live="polite"></figcaption>
+</figure>
+<div class="mb-summary"><p><strong>同一份内容，同一套布局。</strong> 让文字、代码、控件与图表共同响应系统外观。打印时再回到浅色，便于纸面阅读。</p></div>
+<h2 id="practice">试着读一段</h2>
+<p>调整字号，看看同一段话如何适应你的阅读习惯。系统明暗切换仍由设备控制。</p>
+<div class="mb-form-row mb-no-print">
+<div class="mb-field"><label for="reading-size">正文字号</label><select id="reading-size"><option value="16">标准 · 16 px</option><option value="18">舒适 · 18 px</option><option value="20">大字 · 20 px</option></select></div>
+<button id="copy-code" type="button">复制代码示例</button>
+</div>
+<div class="mb-card" id="reading-preview"><p>阅读是一段连续的过程。适当的行距和段落间距，让视线从一行移动到下一行，也为理解留出一点空间。</p></div>
+<p class="mb-hint" id="copy-status" role="status">代码示例可用于自己的页面。</p>
+<details>
+<summary>其他组件：差分、表单与数学</summary>
+<p>新增和删除除了使用不同颜色，还保留 <code>+</code> 与 <code>−</code> 标记。</p>
+<pre class="mb-diff"><code class="nohighlight"><span class="del">color: #222;</span><span class="add">color: var(--mb-ink-body);</span></code></pre>
+<div class="mb-field"><label for="note">阅读笔记</label><textarea id="note" placeholder="记下一个想法……"></textarea></div>
+<p><label><input type="checkbox" checked>标记为已阅读</label> <button disabled>暂不可用</button></p>
+<p>比例也可以写作 <math><mfrac><mi>a</mi><mi>b</mi></mfrac></math>。公式继承正文颜色。</p>
+</details>
+</article>
+<aside class="mb-glossary" aria-label="相关概念"><h2>相关概念</h2><dl>
+<dt>语义颜色</dt><dd>按用途命名的颜色，例如正文、背景和分隔线。</dd>
+<dt>视觉层级</dt><dd>用字号、字重和间距，帮助读者判断内容的先后。</dd>
+<dt>系统外观</dt><dd>设备当前的浅色或深色设置。页面会自动跟随。</dd>
+</dl></aside>
+</div>
+<footer class="mb-footer">阅读样式示例 · 无需切换按钮，跟随系统明暗变化。</footer>
+</main>
+<script>
+const luminance = hex => {
+ const c = hex.replace('#','').match(/../g).map(x => parseInt(x,16)/255).map(v => v <= .04045 ? v/12.92 : ((v+.055)/1.055)**2.4);
+ return .2126*c[0]+.7152*c[1]+.0722*c[2];
+};
+function drawContrast(palette) {
+ const canvas = document.querySelector('#contrast-chart');
+ const width = Math.max(180, canvas.getBoundingClientRect().width);
+ const ratio = window.devicePixelRatio || 1;
+ canvas.width = Math.round(width * ratio); canvas.height = 180 * ratio;
+ const ctx = canvas.getContext('2d'); ctx.scale(ratio,ratio);
+ const entries=[['标题','ink'],['正文','ink-body'],['辅助','muted']];
+ const bg=luminance(palette['bg']);
+ const values=entries.map(([label,key])=> {const fg=luminance(palette[key]);return [label,(Math.max(bg,fg)+.05)/(Math.min(bg,fg)+.05)];});
+ ctx.font='14px -apple-system, BlinkMacSystemFont, sans-serif';
+ const trackWidth = width - 118;
+ values.forEach(([label,value],i)=>{
+  const y=22+i*54;
+  ctx.fillStyle=palette['muted'];ctx.fillText(label,0,y+13);
+  ctx.fillStyle=palette['rule'];ctx.fillRect(48,y,trackWidth,16);
+  ctx.fillStyle=palette['series-1'];ctx.fillRect(48,y,trackWidth*value/21,16);
+  ctx.fillStyle=palette['ink'];ctx.fillText(value.toFixed(1)+':1',width-54,y+13);
+ });
+ document.querySelector('#contrast-values').textContent=values.map(([label,value])=>label+' '+value.toFixed(1)+':1').join('，')+'。以页面背景为基准，切换外观会自动重新计算。';
+}
+MBTheme.watch(drawContrast);
+new ResizeObserver(() => drawContrast(MBTheme.colors())).observe(document.querySelector('#contrast-chart'));
+document.querySelector('#reading-size').addEventListener('change',e=>document.querySelector('#reading-preview').style.fontSize=e.target.value+'px');
+document.querySelector('#copy-code').addEventListener('click',async()=>{
+ const text='body {\n  background: var(--mb-bg);\n  color: var(--mb-ink-body);\n}';
+ try { await navigator.clipboard.writeText(text); document.querySelector('#copy-status').textContent='已复制代码示例。'; }
+ catch { document.querySelector('#copy-status').textContent='无法访问剪贴板，请选择上方代码后复制。'; }
+});
+</script>
+</body>
+</html>

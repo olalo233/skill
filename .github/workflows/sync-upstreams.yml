@@ -1,0 +1,53 @@
+name: Sync upstreams
+on:
+  schedule:
+    - cron: '23 3 * * 1'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: upstream-sync
+  cancel-in-progress: false
+jobs:
+  sync:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - run: python3 -m unittest discover -s tests -v
+      - name: Three-way merge reviewed paths
+        run: python3 scripts/sync_upstreams.py --report "$RUNNER_TEMP/sync-report.json"
+      - name: Record merge results
+        if: always()
+        run: |
+          if test -f "$RUNNER_TEMP/sync-report.json"; then
+            printf '\n```json\n' >> "$GITHUB_STEP_SUMMARY"
+            cat "$RUNNER_TEMP/sync-report.json" >> "$GITHUB_STEP_SUMMARY"
+            printf '\n```\n' >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - run: python3 scripts/validate.py
+      - name: Prepare candidate commit
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add skills licenses .sync/upstreams.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'chore: merge reviewed upstream skill paths'
+          fi
+      - name: Scan candidate and history for secrets
+        uses: gitleaks/gitleaks-action@dcedce43c6f43de0b836d1fe38946645c9c638dc # v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_COMMENTS: false
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: false
+      - name: Publish only after all checks pass
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: git -c credential.helper= -c 'credential.helper=!gh auth git-credential' push origin HEAD:main
