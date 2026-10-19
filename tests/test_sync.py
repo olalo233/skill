@@ -47,6 +47,56 @@ class MergeTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 sync.plan_mapping(root, {}, {'SKILL.md': (b'new', '100644')}, 'skills/demo')
 
+    def test_manifest_rejects_overlap_even_when_sources_are_unchanged(self):
+        source = {'repo': 'fixture/first', 'ref': 'main', 'revision': 'a' * 40,
+                  'paths': [{'source': 'skill', 'destination': 'skills/demo'}]}
+        other = {'repo': 'fixture/other', 'ref': 'main', 'revision': 'b' * 40,
+                 'paths': [{'source': 'skill', 'destination': 'skills/demo/nested'}]}
+        with self.assertRaisesRegex(ValueError, 'Overlapping'):
+            sync.validate_manifest({'sources': [source, other]})
+
+    def test_fetch_failure_does_not_block_independent_source(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp); (root / '.sync').mkdir()
+            sources = [{'repo': 'fixture/' + name, 'ref': 'main', 'revision': 'a' * 40,
+                        'paths': [{'source': 'skill', 'destination': 'skills/' + name}]}
+                       for name in ['broken', 'clean']]
+            config = root / '.sync/upstreams.json'
+            config.write_text(json.dumps({'sources': sources}))
+            def fake_git(repo, *args):
+                if args[0] == 'fetch' and 'broken' in str(repo):
+                    raise subprocess.TimeoutExpired('git', 90)
+                return ('b' * 40).encode() if args[0] == 'rev-parse' else b''
+            def fake_snapshot(repo, revision, source):
+                return {} if revision == 'a' * 40 else {'SKILL.md': (b'new skill', '100644')}
+            with patch.object(sync, 'git', side_effect=fake_git), patch.object(sync, 'snapshot', side_effect=fake_snapshot):
+                self.assertEqual(sync.sync(root, root / 'report.json', root / 'cache'), 2)
+            report = json.loads((root / 'report.json').read_text())
+            self.assertEqual([x['status'] for x in report['sources']], ['error', 'updated'])
+            self.assertEqual((root / 'skills/clean/SKILL.md').read_bytes(), b'new skill')
+            revisions = [s['revision'] for s in json.loads(config.read_text())['sources']]
+            self.assertEqual(revisions, ['a' * 40, 'b' * 40])
+
+    def test_license_change_blocks_entire_source(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp); (root / '.sync').mkdir(); (root / 'skills/demo').mkdir(parents=True)
+            path = root / 'skills/demo/SKILL.md'; path.write_text('old')
+            (root / 'licenses').mkdir(); (root / 'licenses/demo.txt').write_text('old')
+            manifest = {'sources': [{'repo': 'fixture/demo', 'ref': 'main', 'revision': 'a' * 40,
+                        'paths': [{'source': 'skill', 'destination': 'skills/demo'},
+                                  {'source': 'LICENSE', 'destination': 'licenses/demo.txt'}]}]}
+            config = root / '.sync/upstreams.json'; config.write_text(json.dumps(manifest))
+            def fake_snapshot(repo, revision, source):
+                return {'' if source == 'LICENSE' else 'SKILL.md':
+                        (b'old' if revision == 'a' * 40 else b'new', '100644')}
+            with patch.object(sync, 'git', return_value=('b' * 40).encode()), patch.object(sync, 'snapshot', side_effect=fake_snapshot):
+                self.assertEqual(sync.sync(root, root / 'report.json', root / 'cache'), 2)
+            self.assertEqual(path.read_text(), 'old')
+            self.assertEqual(json.loads(config.read_text()), manifest)
+            report = json.loads((root / 'report.json').read_text())
+            self.assertEqual(report['sources'][0]['status'], 'blocked')
+            self.assertIn('-old', report['sources'][0]['reviews'][0]['upstream_diff'])
+
     def test_full_transaction_conflict_then_clean_sync(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp).resolve(); remote = root / 'remote'; checkout = root / 'checkout'
@@ -67,15 +117,28 @@ class MergeTests(unittest.TestCase):
             a=checkout/'skills/demo/a.md'; b=checkout/'skills/demo/b.md'
             a.write_text('local a'); b.write_text('old b')
             (checkout/'skills/demo/local.md').write_text('keep local asset')
-            manifest={'sources':[{'repo':'fixture/upstream','ref':'main','revision':base,'paths':[{'source':'skill','destination':'skills/demo'}]}]}
+            (checkout/'skills/independent').mkdir()
+            (checkout/'skills/independent/a.md').write_text('old a')
+            (checkout/'skills/independent/b.md').write_text('old b')
+            manifest={'sources':[{'repo':'fixture/upstream','ref':'main','revision':base,'paths':[{'source':'skill','destination':'skills/demo'}]},
+                                 {'repo':'fixture/other','ref':'main','revision':base,'paths':[{'source':'skill','destination':'skills/independent'}]}]}
             config=checkout/'.sync/upstreams.json'; config.write_text(json.dumps(manifest))
-            env={'GIT_CONFIG_COUNT':'1','GIT_CONFIG_KEY_0':'url.'+remote.as_uri()+'.insteadOf','GIT_CONFIG_VALUE_0':'https://github.com/fixture/upstream.git'}
+            env={'GIT_CONFIG_COUNT':'2','GIT_CONFIG_KEY_0':'url.'+remote.as_uri()+'.insteadOf','GIT_CONFIG_VALUE_0':'https://github.com/fixture/upstream.git',
+                 'GIT_CONFIG_KEY_1':'url.'+remote.as_uri()+'.insteadOf','GIT_CONFIG_VALUE_1':'https://github.com/fixture/other.git'}
             with patch.dict(os.environ,env):
                 self.assertEqual(sync.sync(checkout,root/'conflict.json',root/'cache'),2)
                 self.assertEqual(b.read_text(),'old b')
                 self.assertEqual(json.loads(config.read_text())['sources'][0]['revision'],base)
+                self.assertEqual(json.loads(config.read_text())['sources'][1]['revision'],head)
+                self.assertEqual((checkout/'skills/independent/b.md').read_text(),'new b')
+                report = json.loads((root/'conflict.json').read_text())
+                self.assertEqual([s['status'] for s in report['sources']], ['blocked', 'updated'])
+                self.assertIn('-old a', report['sources'][0]['reviews'][0]['upstream_diff'])
+                self.assertIn('+local a', report['sources'][0]['reviews'][0]['local_diff'])
                 a.write_text('old a')
                 self.assertEqual(sync.sync(checkout,root/'clean.json',root/'cache'),0)
+                self.assertEqual(sync.sync(checkout,root/'noop.json',root/'cache'),0)
+                self.assertEqual(json.loads((root/'noop.json').read_text())['updates'], [])
             self.assertEqual(a.read_text(),'new a'); self.assertEqual(b.read_text(),'new b')
             self.assertEqual((checkout/'skills/demo/local.md').read_text(),'keep local asset')
             self.assertEqual(json.loads(config.read_text())['sources'][0]['revision'],head)
