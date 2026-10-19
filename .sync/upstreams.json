@@ -3,7 +3,7 @@
   "sources": [
     {
       "repo": "mathbullet/skills",
-      "revision": "5ab997fcb8a80da4938bacb0a86cbd568e1018a7",
+      "revision": "3b039715d24b401eb3495dd4154ce9b6f39b3c68",
       "paths": [
         {
           "source": "plugins/html/skills/html",
@@ -18,7 +18,7 @@
     },
     {
       "repo": "anthropics/claude-plugins-community",
-      "revision": "a727be1c7bd6064419b6f60d71993a19198adc17",
+      "revision": "06ec7b6a0a82bdc4bec44bd82d4368c42f20d7c1",
       "paths": [
         {
           "source": "eli5/skills/eli5",
@@ -33,7 +33,7 @@
     },
     {
       "repo": "humanlayer/skills",
-      "revision": "ca7c8088db69e315a8b2deea43820270457f8f3c",
+      "revision": "653b6411c1f70c275a18e37673b042ff99f67ceb",
       "paths": [
         {
           "source": "plugins/show-me/skills/show-me",
@@ -48,7 +48,7 @@
     },
     {
       "repo": "mattpocock/skills",
-      "revision": "c55ee46073ed923f86ce59a5eb3b6d895095d1b7",
+      "revision": "49dd158d1076134a641b33efb035946536778336",
       "paths": [
         {
           "source": "skills/productivity/grill-me",
@@ -75,7 +75,7 @@
     },
     {
       "repo": "DietrichGebert/ponytail",
-      "revision": "e3ba2aa6f1e6f0bc4d69eb09c9f0d0a93af56156",
+      "revision": "09c434ab73ca43761c5d8b0c5d341926c2fba710",
       "paths": [
         {
           "source": "skills/ponytail-review",
