@@ -41,6 +41,7 @@ This suite assembles upstream work. Local adaptations are explicit below; do not
 - Repository: `DietrichGebert/ponytail`
 - Current merge baseline: `.sync/upstreams.json`.
 - Copied path: `skills/ponytail-review/`
+- Local adaptation: retain the narrow over-engineering review. The reviewed upstream update broadened it into a general correctness/security/performance review; that scope expansion is intentionally not adopted. Future updates merge against the reviewed baseline while preserving this local policy.
 - License: MIT, preserved under `licenses/ponytail-MIT.txt`.
 
 Only the narrow review skill is bundled. The always-on Ponytail skill is not included. In this suite the review is optional; deleting lines is not a delivery metric.
