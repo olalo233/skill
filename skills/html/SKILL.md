@@ -9,7 +9,7 @@ description: Create and edit visual explanatory documents in HTML for concepts, 
 
 The following skills are recommended to supplement the explanatory content and Japanese-language expression.
 
-- `explain`: Terminology definitions, level of detail, and structure when explaining concepts and mechanisms
+- `ja-explainer`: Writing standards for summarizing and explaining papers or articles in Japanese
 - [`japanese-tech-writing`](https://gist.github.com/k16shikano/fd287c3133457c4fd8f5601d34aa817d): Structure and writing standards for Japanese technical documents, articles, and explanatory writing
 - [`cognitive-rhythm-writing`](https://gist.github.com/k16shikano/eb2929f13ed19c97188393d297be8432): Writing standards for long-form content that needs changes of pace to remain engaging
 
