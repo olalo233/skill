@@ -23,7 +23,17 @@ jobs:
           persist-credentials: false
       - run: python3 -m unittest discover -s tests -v
       - name: Three-way merge reviewed paths
-        run: python3 scripts/sync_upstreams.py --report "$RUNNER_TEMP/sync-report.json"
+        id: merge
+        run: |
+          set +e
+          python3 scripts/sync_upstreams.py --report "$RUNNER_TEMP/sync-report.json" --cache "$RUNNER_TEMP/upstream-cache"
+          status=$?
+          set -e
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          # Exit 2 means some sources need review; publish independent clean sources first.
+          if test "$status" -ne 0 && test "$status" -ne 2; then
+            exit "$status"
+          fi
       - name: Record merge results
         if: always()
         run: |
@@ -32,6 +42,14 @@ jobs:
             cat "$RUNNER_TEMP/sync-report.json" >> "$GITHUB_STEP_SUMMARY"
             printf '\n```\n' >> "$GITHUB_STEP_SUMMARY"
           fi
+      - name: Retain source review diffs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: upstream-sync-report
+          path: ${{ runner.temp }}/sync-report.json
+          if-no-files-found: ignore
+          retention-days: 30
       - run: python3 scripts/validate.py
       - name: Prepare candidate commit
         run: |
@@ -51,3 +69,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: git -c credential.helper= -c 'credential.helper=!gh auth git-credential' push origin HEAD:main
+      - name: Flag sources needing review
+        if: steps.merge.outputs.status == '2'
+        run: |
+          echo '::error::Some upstream sources need review. Clean sources were published only if all checks passed. See the summary and upstream-sync-report artifact.'
+          exit 2
