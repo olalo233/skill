@@ -59,9 +59,9 @@ def merge_file(ours, base, theirs):
         paths = [Path(tmp) / name for name in ('ours', 'base', 'theirs')]
         for path, content in zip(paths, (ours, base, theirs)):
             path.write_bytes(content)
-        p = subprocess.run(['git', 'merge-file', '-p', *map(str, paths)], capture_output=True)
+        p = subprocess.run(['git', 'merge-file', '-p', *map(str, paths)], capture_output=True, timeout=90)
     if not 0 <= p.returncode <= 127:
-        raise RuntimeError('git merge-file failed')
+        raise ValueError('git merge-file failed')
     return p.stdout if p.returncode == 0 else None, p.returncode != 0
 
 
@@ -137,7 +137,7 @@ def review_diff(root, old, new, destination, paths):
         base = old.get(relative, (b'', None))[0].decode('utf-8')
         theirs = new.get(relative, (b'', None))[0].decode('utf-8')
         local = root / path
-        ours = local.read_text(encoding='utf-8') if local.is_file() else ''
+        ours = local.read_text(encoding='utf-8', errors='replace') if local.is_file() else ''
         def diff(text, label):
             return ''.join(difflib.unified_diff(base.splitlines(True), text.splitlines(True),
                                                fromfile='base/' + path, tofile=label + '/' + path))
@@ -219,9 +219,27 @@ def sync(root, report_path, cache=None):
     return 2 if conflicts or errors else 0
 
 
+def summary_markdown(report):
+    def cell(value):
+        return str(value).replace('|', '&#124;').replace('\r\n', '\n').replace('\r', '\n').replace('\n', '<br>')
+    lines = ['| Repo | Status | From | To | Conflict paths | Error |',
+             '| --- | --- | --- | --- | --- | --- |']
+    for source in report['sources']:
+        values = [source['repo'], source['status'], source['from'][:7], source.get('to', '')[:7],
+                  '\n'.join(source.get('conflicts', [])), source.get('error', '')]
+        lines.append('| ' + ' | '.join(map(cell, values)) + ' |')
+    return '\n'.join(lines) + '\n\nSee the upstream-sync-report artifact for full review diffs.\n'
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--report', type=Path, required=True)
+    parser.add_argument('--report', type=Path)
+    parser.add_argument('--summarize', type=Path)
     parser.add_argument('--cache', type=Path)
     args = parser.parse_args()
+    if args.summarize:
+        print(summary_markdown(json.loads(args.summarize.read_text())), end='')
+        raise SystemExit(0)
+    if not args.report:
+        parser.error('--report is required unless --summarize is given')
     raise SystemExit(sync(ROOT, args.report, args.cache))
