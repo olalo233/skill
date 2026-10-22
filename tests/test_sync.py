@@ -97,6 +97,60 @@ class MergeTests(unittest.TestCase):
             self.assertEqual(report['sources'][0]['status'], 'blocked')
             self.assertIn('-old', report['sources'][0]['reviews'][0]['upstream_diff'])
 
+    def test_merge_failure_does_not_block_independent_source(self):
+        run = subprocess.run
+        for failure in ('returncode', 'timeout'):
+            with self.subTest(failure=failure), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp); (root / '.sync').mkdir()
+                path = root / 'skills/broken/SKILL.md'
+                path.parent.mkdir(parents=True); path.write_bytes(b'local')
+                clean = root / 'skills/clean/SKILL.md'
+                clean.parent.mkdir(parents=True); clean.write_bytes(b'old')
+                sources = [{'repo': 'fixture/' + name, 'ref': 'main', 'revision': 'a' * 40,
+                            'paths': [{'source': 'skill', 'destination': 'skills/' + name}]}
+                           for name in ['broken', 'clean']]
+                config = root / '.sync/upstreams.json'
+                config.write_text(json.dumps({'sources': sources}))
+                def fake_run(args, **kwargs):
+                    if args[:2] == ['git', 'merge-file']:
+                        self.assertEqual(kwargs['timeout'], 90)
+                        if failure == 'timeout':
+                            raise subprocess.TimeoutExpired('git', 90)
+                        return subprocess.CompletedProcess(args, 255, b'', b'')
+                    return run(args, **kwargs)
+                def fake_snapshot(repo, revision, source):
+                    return {'SKILL.md': (b'old' if revision == 'a' * 40 else b'new', '100644')}
+                with patch.object(sync, 'git', return_value=('b' * 40).encode()), \
+                     patch.object(sync, 'snapshot', side_effect=fake_snapshot), \
+                     patch.object(sync.subprocess, 'run', side_effect=fake_run):
+                    self.assertEqual(sync.sync(root, root / 'report.json', root / 'cache'), 2)
+                report = json.loads((root / 'report.json').read_text())
+                self.assertEqual([s['status'] for s in report['sources']], ['error', 'updated'])
+                self.assertEqual(report['sources'][0]['error'],
+                                 'TimeoutExpired' if failure == 'timeout' else 'git merge-file failed')
+                self.assertEqual(path.read_bytes(), b'local')
+                self.assertEqual((root / 'skills/clean/SKILL.md').read_bytes(), b'new')
+                self.assertEqual([s['revision'] for s in json.loads(config.read_text())['sources']],
+                                 ['a' * 40, 'b' * 40])
+
+    def test_summary_omits_diffs_and_escapes_cells(self):
+        report = {'sources': [{'repo': 'fixture/demo', 'status': 'blocked', 'from': 'a' * 40,
+                              'to': 'b' * 40, 'conflicts': ['skills/a|b.md', 'skills/c.md'],
+                              'error': 'bad|file\r\ntry\ragain\nsoon',
+                              'reviews': [{'upstream_diff': '```\nfull diff', 'local_diff': '```'}]},
+                             {'repo': 'fixture/error', 'status': 'error', 'from': 'c' * 40}]}
+        summary = sync.summary_markdown(report)
+        self.assertIn('| fixture/demo | blocked | aaaaaaa | bbbbbbb | skills/a&#124;b.md<br>skills/c.md | bad&#124;file<br>try<br>again<br>soon |', summary)
+        self.assertIn('| fixture/error | error | ccccccc |  |  |  |', summary)
+        self.assertNotIn('```', summary)
+        self.assertNotIn('full diff', summary)
+        self.assertIn('upstream-sync-report artifact', summary)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'report.json'; path.write_text(json.dumps(report))
+            result = subprocess.run(['python3', str(Path(sync.__file__)), '--summarize', str(path)],
+                                    capture_output=True, text=True, check=True)
+            self.assertEqual(result.stdout, summary)
+
     def test_full_transaction_conflict_then_clean_sync(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp).resolve(); remote = root / 'remote'; checkout = root / 'checkout'
@@ -115,7 +169,7 @@ class MergeTests(unittest.TestCase):
             (checkout / 'skills/demo').mkdir(parents=True)
             (checkout / '.sync').mkdir()
             a=checkout/'skills/demo/a.md'; b=checkout/'skills/demo/b.md'
-            a.write_text('local a'); b.write_text('old b')
+            a.write_bytes(b'local a\xff'); b.write_text('old b')
             (checkout/'skills/demo/local.md').write_text('keep local asset')
             (checkout/'skills/independent').mkdir()
             (checkout/'skills/independent/a.md').write_text('old a')
@@ -134,7 +188,7 @@ class MergeTests(unittest.TestCase):
                 report = json.loads((root/'conflict.json').read_text())
                 self.assertEqual([s['status'] for s in report['sources']], ['blocked', 'updated'])
                 self.assertIn('-old a', report['sources'][0]['reviews'][0]['upstream_diff'])
-                self.assertIn('+local a', report['sources'][0]['reviews'][0]['local_diff'])
+                self.assertIn('+local a\ufffd', report['sources'][0]['reviews'][0]['local_diff'])
                 a.write_text('old a')
                 self.assertEqual(sync.sync(checkout,root/'clean.json',root/'cache'),0)
                 self.assertEqual(sync.sync(checkout,root/'noop.json',root/'cache'),0)

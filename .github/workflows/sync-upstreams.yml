@@ -38,9 +38,7 @@ jobs:
         if: always()
         run: |
           if test -f "$RUNNER_TEMP/sync-report.json"; then
-            printf '\n```json\n' >> "$GITHUB_STEP_SUMMARY"
-            cat "$RUNNER_TEMP/sync-report.json" >> "$GITHUB_STEP_SUMMARY"
-            printf '\n```\n' >> "$GITHUB_STEP_SUMMARY"
+            python3 scripts/sync_upstreams.py --summarize "$RUNNER_TEMP/sync-report.json" >> "$GITHUB_STEP_SUMMARY"
           fi
       - name: Retain source review diffs
         if: always()
