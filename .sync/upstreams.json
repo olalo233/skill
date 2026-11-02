@@ -33,7 +33,7 @@
     },
     {
       "repo": "humanlayer/skills",
-      "revision": "653b6411c1f70c275a18e37673b042ff99f67ceb",
+      "revision": "4d69d20f6e9b57b4fcf0d501ccfb1be961f0f329",
       "paths": [
         {
           "source": "plugins/show-me/skills/show-me",
@@ -48,7 +48,7 @@
     },
     {
       "repo": "mattpocock/skills",
-      "revision": "5beb35b040e3de97e54fa9e386d7e42d15c295c2",
+      "revision": "4ae2317ddb22b046e26455e4f9c9b3aaaf62212d",
       "paths": [
         {
           "source": "skills/productivity/grill-me",
@@ -75,7 +75,7 @@
     },
     {
       "repo": "DietrichGebert/ponytail",
-      "revision": "09c434ab73ca43761c5d8b0c5d341926c2fba710",
+      "revision": "96608e078b2d5ea607c5c3b8b5a54d1c1fba6846",
       "paths": [
         {
           "source": "skills/ponytail-review",
