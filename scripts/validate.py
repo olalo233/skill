@@ -45,7 +45,10 @@ for source in manifest['sources']:
             errors.append('Unsafe sync destination'); continue
         if not (ROOT / path).exists(): errors.append(f'Missing source destination: {path}')
         if path.parts[0] == 'skills': covered.add(path.parts[1])
-if set(skills) != covered: errors.append('Skills and upstream manifest differ')
+local_file = ROOT / '.sync/local-skills.txt'
+local = set(local_file.read_text().split()) if local_file.exists() else set()
+if local & covered: errors.append('Local skills must not also be upstream-mapped')
+if set(skills) != covered | local: errors.append('Skills and upstream manifest differ')
 
 assets = ROOT / 'skills/html/design-system'
 for filename in ['document.css','theme.css','theme.js','math-copy.js','component-samples.html']:
