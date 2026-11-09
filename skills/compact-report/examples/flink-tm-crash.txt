@@ -1,0 +1,39 @@
+FMT=C2 | RPT=示例数据-TMX-01 | TZ=+08 | 日期=2026-11-09 | 作者=示例
+#图例 判:Y成立 N排除 ?未定 | Xn事件 E-n证据 Hn假设 An建议 Pn优先级 Cn待采集
+§0 KEY 字段序: 事件 | 时间 | 节点 | PID | 退出码 | RSS/上限 | GC最大 | ckpt时长/大小 | 类型 | 置信
+0.1 X1 | 11-03 02:17:41 | node-B | 23817 | 137 | 4.71G/4.00G | 0.31s | 31.4s/1.38G | 主机OOM | 中
+0.2 X2 | 11-06 14:52:09 | node-A | 31102 | 137 | NA/4.00G | 0.28s | 27.9s/1.35G | 疑主机OOM | 低
+§1 ENV 环境
+1.1 Flink2.3.0 Java17 standalone+systemd; TM 4096m/4slot; ckpt 30s; Kafka->Redis+InfluxDB
+1.2 作业 J1/J2/J3 均为 Flink SQL; J2 状态TTL=0; heartbeat.timeout=50s(E-8)
+§2 SUM 结论
+2.1 X1 直接原因: 内核OOM killer杀TM(E-1,E-2). 置信=高
+2.2 X1 疑根因: 同机Redis涨到7.9G且无maxmemory(E-6), 主机可用内存降到0.2G(E-3). 置信=中
+2.3 X1 叠加: TM RSS 4.71G 超配额4.00G约18%(E-1). 置信=中
+2.4 X2 只有exit137, 无内核日志(journal易失). 疑与X1同因, 待C1,C4. 置信=低
+§3 TL 时间线
+3.1 X1 01:30 avail3.9G redis5.2G 基线 | 01:58 redis7.9G | 02:10 avail0.6G
+3.2 X1 02:14:30 chk-411 31.4s(基线4.1s) | 02:16:58 GC0.31s(最大)
+3.3 X1 02:17:41 OOM杀23817 首个致命 | 02:17:52 自动重启 | 02:19:05 RUNNING(断84s)
+3.4 X2 14:52:09 tm-1失联(E-7) | 14:52:20 NRestarts=1 ExecMainStatus=9
+§4 EV 证据
+4.1 [E-1 journal-k node-B] Out of memory: Killed process 23817 (java) anon-rss:4.71G
+4.2 [E-2 journal node-B] flink-tm@2.service: Main process exited, code=killed, status=9/KILL
+4.3 [E-3 sar-r node-B] avail 02:00=1.4G 02:10=0.6G 02:17=0.2G total=16G
+4.4 [E-4 gc.log node-B] p99=0.18s max=0.31s 无FullGC
+4.5 [E-5 tm.log node-B] 无OutOfMemoryError 无hs_err文件
+4.6 [E-6 redis-INFO node-B] used_memory=7.9G maxmemory=0
+4.7 [E-7 jm.log:3301 node-A] TaskManager tm-1 disconnected
+4.8 [E-8 config.yaml node-B] heartbeat.timeout: 50000 | df 41% | FD 2.1k/65k
+§5 HX 假设
+5.1 N: H1 JVM内OOM(E-5) | H3 GC停顿(0.31s<<50s,E-4,E-8) | H6 JVM崩溃(E-5) | H7 磁盘/FD(E-8)
+5.2 Y: H2 主机OOM killer(E-1,E-2,E-3) | ?: H2b cgroup限额(C3) | ?: H8 ckpt变慢是因是果
+§6 ACT 建议(需人确认)
+6.1 A1 P1 node-B Redis maxmemory 6G+淘汰策略; 险=缓存淘汰; 重启=否; 回退=maxmemory 0
+6.2 A2 P1 全部TM 加NMT summary和GC日志; 险=开销<5%; 重启=是; 回退=去掉参数
+6.3 A3 P2 TM的systemd加MALLOC_ARENA_MAX=4; 险=低; 重启=是; 回退=删env
+6.4 A4 P2 MemAvailable<1.5G持续5m告警, journal持久化; 险=低; 重启=否; 回退=NA
+§7 TODO 待采集
+7.1 C1 node-A sar 11-06 | C2 NMT summary(A2后6h) | C3 cgroup memory.max和oom_kill计数
+7.2 C4 node-A /var/log/messages* 是否留存11-06 | C5 state.backend.type 生效值
+§END 节=0-7 编号行=28
