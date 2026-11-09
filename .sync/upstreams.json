@@ -18,7 +18,7 @@
     },
     {
       "repo": "anthropics/claude-plugins-community",
-      "revision": "06ec7b6a0a82bdc4bec44bd82d4368c42f20d7c1",
+      "revision": "163301d1904c0a994539f5226ce0fcd65b8652bf",
       "paths": [
         {
           "source": "eli5/skills/eli5",
