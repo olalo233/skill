@@ -6,27 +6,53 @@ Default is a dry run: pass --apply to change anything.
 User-level install (default): symlinks the base suite into
   ~/.agents/skills, ~/.claude/skills, ~/.gemini/skills,
   ~/.gemini/config/skills, ~/.codex/skills
-Project install (--project): copies selected skills into
-  ./.agents/skills and ./.claude/skills and never retires anything.
+Project install (--project): copies each selected entity once into
+  ./.agents/skills and places a relative symlink at ./.claude/skills,
+  records ownership in ./.skills-lock.json, and never retires anything.
 
-Skill content always comes from --source, a clone whose worktree must be
-clean with HEAD equal to --ref; links never point at the worktree this
-script happens to run from. Retired-entry lists live in
-.sync/index-source.json ("retired"), keyed by target directory.
+Payload never comes from the worktree: --ref is resolved to a commit and
+the needed trees are exported (git archive) into an immutable,
+content-addressed snapshot at
+  <common target parent>/.install-base-snapshots/<commit>/
+so untracked or ignored worktree files can never leak into an install and
+links never drift with the checkout.
 
-Before anything changes, every affected entry (retired skills, replaced
-installs, the index files at each target root) is recorded in a manifest
-inside one backup directory; a failure mid-apply restores from it.
---rollback <backup-dir> replays that restore for a finished install.
+Skills are identified by their repository path (e.g.
+vendor/matt/skills/engineering/tdd). A bare --skill name only resolves
+when it is unique; ambiguous names are an error listing the qualified
+candidates.
+
+Every mutating step (retirement, replacement, install, index files, the
+project lock) is an op journaled inside one backup directory. The journal
+is rewritten atomically after every state transition, and the op that was
+in flight when apply failed is rolled back too -- 'done' is not the
+criterion, the recorded state is. --rollback <backup-dir> replays the
+restore, but first verifies nothing was edited since the install; it
+refuses rather than drop newer edits, and it reports failure honestly
+without marking the backup consumed.
+
+Suites are declared in suites/<name>.json inside the source tree:
+  --project --suite matt-dev      install a suite (member closure listed there)
+  --project --update --suite X    re-install at --ref; refuses when a member
+                                  was edited locally unless --force (edited
+                                  copy is moved to the backup dir first)
+  --project --uninstall X         drop X from every member's required_by and
+                                  remove only what no longer has an owner
 """
 import argparse
+import hashlib
+import io
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
+import tarfile
+import tempfile
+import itertools
 from datetime import datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 DEFAULT_SOURCE = Path.home() / 'space/github/skill'
 USER_TARGETS = [Path.home() / '.agents/skills',
@@ -34,57 +60,219 @@ USER_TARGETS = [Path.home() / '.agents/skills',
                 Path.home() / '.gemini/skills',
                 Path.home() / '.gemini/config/skills',
                 Path.home() / '.codex/skills']
-PROJECT_TARGETS = [Path('.agents/skills'), Path('.claude/skills')]
+PROJECT_PRIMARY = '.agents/skills'
+PROJECT_LINK_ROOTS = ['.claude/skills']
 INDEX_FILES = ['index.json', 'INDEX.md']
+LOCK_NAME = '.skills-lock.json'
+SNAP_DIRNAME = '.install-base-snapshots'
+BACKUP_PREFIX = '.install-base-backup-'
+SNAP_MARKER = '.snapshot-complete'
+EXPLICIT = 'explicit'
+NAME_RE = re.compile(r'^[A-Za-z0-9_.-]+$')
+BASE_EXPORT_PATHS = ['.sync', 'suites', 'index.json', 'INDEX.md']
 
 
-def verify_source(source, ref):
-    """Refuse to install unless --source is a clean clone pinned at --ref."""
+# ---------------------------------------------------------------- source pin
+
+def resolve_commit(source, ref):
+    """Resolve --ref to a full commit SHA inside --source (a clone)."""
     if not (source / '.git').exists():
         raise SystemExit(f'install-base: --source is not a clone: {source}')
-    status = subprocess.run(['git', '-C', str(source), 'status', '--porcelain'],
-                            capture_output=True, text=True)
-    if status.returncode or status.stdout.strip():
-        raise SystemExit(f'install-base: --source has uncommitted changes: {source}')
-    head = subprocess.run(['git', '-C', str(source), 'rev-parse', 'HEAD'],
-                          capture_output=True, text=True).stdout.strip()
-    want = subprocess.run(['git', '-C', str(source), 'rev-parse', ref + '^{commit}'],
-                          capture_output=True, text=True).stdout.strip()
-    if head != want:
-        raise SystemExit(f'install-base: --source HEAD is {head or "?"}, --ref requires {want or "?"} ({ref})')
-    return head
+    out = subprocess.run(['git', '-C', str(source), 'rev-parse', ref + '^{commit}'],
+                         capture_output=True, text=True)
+    sha = out.stdout.strip()
+    if out.returncode or not re.fullmatch(r'[0-9a-f]{40}', sha or ''):
+        raise SystemExit(f'install-base: --ref {ref!r} does not resolve to a commit in {source}')
+    return sha
 
 
-def load_index(source):
+def _tar_members_safe(tf, dest):
+    """Yield archive members after rejecting escapes and unsafe types."""
+    dest = dest.resolve()
+    for m in tf:
+        rel = PurePosixPath(m.name)
+        if rel.is_absolute() or '..' in rel.parts:
+            raise SystemExit(f'install-base: unsafe path in archive: {m.name}')
+        if m.issym() or m.islnk():
+            resolved = (dest / rel).parent.joinpath(m.linkname).resolve()
+            if resolved != dest and dest not in resolved.parents:
+                raise SystemExit(f'install-base: unsafe link in archive: {m.name}')
+        if m.isdir() or m.isreg() or m.issym():
+            yield m, dest / rel
+
+
+def export_snapshot(source, sha, paths, snap_root):
+    """Export `paths` of commit `sha` into snap_root/sha (immutable).
+
+    Extraction goes through a temp dir renamed into place, so a concurrent
+    or crashed run never leaves a half-written snapshot; the marker file
+    certifies completeness. Returns the snapshot directory.
+    """
+    dest = snap_root / sha
+    if (dest / SNAP_MARKER).is_file():
+        return dest
+    snap_root.mkdir(parents=True, exist_ok=True)
+    gitignore = snap_root / '.gitignore'
+    if not gitignore.exists():
+        gitignore.write_text('*\n')
+    tmp = Path(tempfile.mkdtemp(prefix=f'.{sha}.', dir=str(snap_root)))
     try:
-        index = json.loads((source / 'index.json').read_text())
-        src = json.loads((source / '.sync/index-source.json').read_text())
-    except (OSError, json.JSONDecodeError) as exc:
-        raise SystemExit(f'install-base: cannot read index in {source}: {exc}')
+        pathspec = [] if paths == ['.'] else ['--'] + sorted(paths)
+        proc = subprocess.run(['git', '-C', str(source), 'archive', sha] + pathspec,
+                              capture_output=True)
+        if proc.returncode:
+            raise SystemExit('install-base: git archive failed for commit '
+                             f'{sha}:\n{proc.stderr.decode(errors="replace")}')
+        with tarfile.open(fileobj=io.BytesIO(proc.stdout)) as tf:
+            for m, target in _tar_members_safe(tf, tmp):
+                if m.isdir():
+                    target.mkdir(parents=True, exist_ok=True)
+                elif m.isreg():
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    with tf.extractfile(m) as fh:
+                        target.write_bytes(fh.read())
+                else:  # symlink
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.symlink_to(m.linkname)
+        (tmp / SNAP_MARKER).write_text(sha + '\n')
+        try:
+            os.rename(tmp, dest)
+        except OSError:
+            if (dest / SNAP_MARKER).is_file():  # another run won the race
+                shutil.rmtree(tmp, ignore_errors=True)
+                return dest
+            raise
+        return dest
+    except BaseException:
+        shutil.rmtree(tmp, ignore_errors=True)
+        raise
+
+
+# ------------------------------------------------------------ index/identity
+
+def git_show(source, sha, path):
+    """Read one file out of a commit; None when absent."""
+    out = subprocess.run(['git', '-C', str(source), 'show', f'{sha}:{path}'],
+                         capture_output=True)
+    return out.stdout if out.returncode == 0 else None
+
+
+def parse_source_index(index_text, src_text, where):
+    try:
+        index = json.loads(index_text)
+        src = json.loads(src_text)
+    except (TypeError, json.JSONDecodeError) as exc:
+        raise SystemExit(f'install-base: cannot read index in {where}: {exc}')
     base = src['suites']['base']['skills']
+    return index['skills'], base, src.get('retired', {}), src
+
+
+def load_source_index(root):
+    """Read index.json and .sync/index-source.json from a tree on disk."""
+    try:
+        return parse_source_index((root / 'index.json').read_text(),
+                                  (root / '.sync/index-source.json').read_text(), root)
+    except OSError as exc:
+        raise SystemExit(f'install-base: cannot read index in {root}: {exc}')
+
+
+def skill_dir(entry):
+    """Repository-relative directory of an index entry (its identity)."""
+    return entry['path'].rsplit('/', 1)[0]
+
+
+def load_repo_map(upstreams_text):
+    """Map repo-relative prefixes to upstream repo slugs."""
+    try:
+        manifest = json.loads(upstreams_text)
+    except (TypeError, json.JSONDecodeError):
+        return {}
+    repo_map = {}
+    for source in manifest.get('sources', []):
+        for group in ('paths', 'vendor_paths'):
+            for mapping in source.get(group, []):
+                repo_map[mapping['destination'].rstrip('/')] = source['repo']
+    return repo_map
+
+
+def repo_identity_for(path, repo_map, source):
+    """Portable upstream slug for a repo-relative path ('local' if none)."""
+    best, hit = '', None
+    for dest, repo in repo_map.items():
+        if (path == dest or path.startswith(dest + '/')) and len(dest) > len(best):
+            best, hit = dest, repo
+    if hit:
+        return hit
+    remote = subprocess.run(['git', '-C', str(source), 'config', 'remote.origin.url'],
+                            capture_output=True, text=True).stdout.strip()
+    return remote or 'local'
+
+
+def resolve_selectors(selectors, entries):
+    """Resolve --skill selectors to unique index entries.
+
+    A selector is either a repository path (the skill's directory) or a
+    bare name that must be unique across the index; ambiguous bare names
+    are an error that prints the qualified candidates.
+    """
+    by_dir = {}
     by_name = {}
-    for entry in index['skills']:
-        by_name.setdefault(entry['name'], entry)
-    return by_name, base, index, src.get('retired', {})
+    for e in entries:
+        by_dir[skill_dir(e)] = e
+        by_name.setdefault(e['name'], []).append(e)
+    picked, seen = [], set()
+    for sel in selectors:
+        entry = by_dir.get(sel)
+        if entry is None:
+            cands = by_name.get(sel, [])
+            # skills/ is the curated set; a vendored copy of the same name is
+            # the upstream original, so a bare name resolves to the curated
+            # one. Ambiguity *within* vendor trees (or within skills/) is a
+            # hard error -- qualify by repository path.
+            curated = [c for c in cands if skill_dir(c).startswith('skills/')]
+            cands = curated if len(curated) == 1 else cands
+            if not cands:
+                raise SystemExit(f'Unknown skill: {sel} (not a name or path in index.json)')
+            if len(cands) > 1:
+                where = '\n'.join(f'  {skill_dir(c)}' for c in cands)
+                raise SystemExit(f'Ambiguous skill name {sel!r}; qualify by path:\n{where}')
+            entry = cands[0]
+        key = skill_dir(entry)
+        if key not in seen:
+            seen.add(key)
+            picked.append(entry)
+    return picked
 
 
-def resolve(names, by_name):
-    """Expand names with their dependency closure, in install order."""
+def closure(roots, entries):
+    """Expand entries with their dependency closure, in install order."""
+    by_name = {}
+    for e in entries:
+        by_name.setdefault(e['name'], []).append(e)
     picked, seen = [], set()
 
-    def add(name):
-        if name in seen:
+    def dep_entry(name, want_suite):
+        cands = by_name.get(name, [])
+        same = [c for c in cands if c['suite'] == want_suite]
+        cands = same or [c for c in cands if skill_dir(c).startswith('skills/')] or cands
+        if not cands:
+            raise SystemExit(f'Unknown dependency: {name} (not in index.json)')
+        if len(cands) > 1:
+            where = ', '.join(skill_dir(c) for c in cands)
+            raise SystemExit(f'Ambiguous dependency {name!r}: {where}')
+        return cands[0]
+
+    def add(entry):
+        key = skill_dir(entry)
+        if key in seen:
             return
-        entry = by_name.get(name)
-        if entry is None:
-            raise SystemExit(f'Unknown skill: {name} (not in index.json)')
         for dep in entry['depends']:
-            add(dep)
-        seen.add(name)
+            add(dep_entry(dep, entry['suite']))
+        seen.add(key)
         picked.append(entry)
 
-    for name in names:
-        add(name)
+    for entry in roots:
+        add(entry)
     return picked
 
 
@@ -97,81 +285,113 @@ def retired_names(retired, target):
     return sorted(set(names))
 
 
+# ------------------------------------------------------------------- digests
+
+def _hash_file(h, path):
+    with open(path, 'rb') as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b''):
+            h.update(chunk)
+
+
+def tree_digest(path):
+    """sha256 over a whole tree: every relative path, kind, and payload."""
+    h = hashlib.sha256()
+    if path.is_symlink():
+        h.update(b'link\0' + os.readlink(path).encode() + b'\0')
+        return h.hexdigest()
+    if path.is_file():
+        _hash_file(h, path)
+        return h.hexdigest()
+    for p in sorted(path.rglob('*'), key=lambda q: q.as_posix()):
+        rel = p.relative_to(path).as_posix()
+        h.update(rel.encode() + b'\0')
+        if p.is_symlink():
+            h.update(b'link\0' + os.readlink(p).encode() + b'\0')
+        elif p.is_dir():
+            h.update(b'dir\0')
+        elif p.is_file():
+            h.update(b'file\0')
+            _hash_file(h, p)
+        h.update(b'\0')
+    return h.hexdigest()
+
+
+def describe(path):
+    """State fingerprint used to detect edits after install."""
+    if path.is_symlink():
+        return {'kind': 'link', 'sha256': tree_digest(path)}
+    if path.is_file():
+        return {'kind': 'file', 'sha256': tree_digest(path)}
+    if path.is_dir():
+        return {'kind': 'dir', 'sha256': tree_digest(path)}
+    return {'kind': 'absent', 'sha256': 'absent'}
+
+
+# ------------------------------------------------------------------ suites
+
+def parse_suite(text, name):
+    """Validate suites/<name>.json text: member paths are safe, the
+    dependency closure is explicitly listed, names match directories."""
+    if not NAME_RE.fullmatch(name):
+        raise SystemExit(f'install-base: bad suite name: {name!r}')
+    if text is None:
+        raise SystemExit(f'install-base: no suite {name!r} in source '
+                         f'(looked at suites/{name}.json)')
+    suite = json.loads(text)
+    members = suite.get('members', [])
+    by_name = {}
+    for m in members:
+        rel = PurePosixPath(m['path'])
+        if not NAME_RE.fullmatch(m['name']) or rel.is_absolute() or '..' in rel.parts:
+            raise SystemExit(f'install-base: unsafe member in suite {name}: {m}')
+        if m['name'] in by_name:
+            raise SystemExit(f'install-base: duplicate member {m["name"]!r} in suite {name}')
+        if m['name'] != rel.name:
+            raise SystemExit(f"install-base: suite {name}: member {m['name']} must live in a "
+                             f'same-named directory ({m["path"]})')
+        by_name[m['name']] = m
+    for m in members:
+        for dep in m.get('depends', []):
+            if dep not in by_name:
+                raise SystemExit(
+                    f"install-base: suite {name}: {m['name']} depends on {dep!r}, "
+                    'which is not an explicit member of the suite file')
+    ordered, seen = [], set()
+
+    def visit(m):
+        if m['name'] in seen:
+            return
+        for dep in m.get('depends', []):
+            visit(by_name[dep])
+        seen.add(m['name'])
+        ordered.append(m)
+
+    for m in members:
+        visit(m)
+    return suite, ordered
+
+
+def entity_digest(snap, member):
+    return tree_digest(snap / member['path'])
+
+
+# --------------------------------------------------------------------- ops
+
 def backup_dir_for(targets, ts):
     parents = [t.parent for t in targets]
     try:
         base = Path(os.path.commonpath([str(p) for p in parents])) if len(parents) > 1 else parents[0]
     except ValueError:
         base = parents[0]
-    candidate = base / f'.install-base-backup-{ts}'
+    candidate = base / f'{BACKUP_PREFIX}{ts}'
     n = 1
     while candidate.exists():
         n += 1
-        candidate = base / f'.install-base-backup-{ts}-{n}'
+        candidate = base / f'{BACKUP_PREFIX}{ts}-{n}'
     return candidate
 
 
-def plan(targets, entries, source, ref, link, retire, retired):
-    """Return (actions, ops): display rows plus executable operations.
-
-    Every mutating step — retirement, replacement, install, the index files
-    at each target root — is an op here so dry-run shows it and apply can
-    roll it back.
-    """
-    actions, ops = [], []
-    seq = [0]
-
-    def backup_rel(path):
-        rel = f'files/{seq[0]}/{path.name}'
-        seq[0] += 1
-        return rel
-
-    for target in targets:
-        if not target.exists():
-            ops.append({'op': 'mkdir', 'path': str(target)})
-            actions.append((target, 'create', str(target)))
-        if retire:
-            for name in retired_names(retired, target):
-                stale = target / name
-                if stale.exists() or stale.is_symlink():
-                    ops.append({'op': 'move', 'path': str(stale), 'backup': backup_rel(stale)})
-                    actions.append((target, 'retire', f'{stale} -> <backup>/{stale.name}'))
-        for entry in entries:
-            src = source / entry['path'].rsplit('/', 1)[0]
-            dest = target / entry['name']
-            if not src.is_dir():
-                actions.append((target, 'skip', f"{entry['name']}: source missing ({src})"))
-                continue
-            if dest.is_symlink() and link and Path(dest.readlink()) == src:
-                actions.append((target, 'keep', str(dest)))
-                continue
-            if dest.exists() or dest.is_symlink():
-                ops.append({'op': 'move', 'path': str(dest), 'backup': backup_rel(dest)})
-                actions.append((target, 'replace', f'{dest} -> <backup>/{dest.name}'))
-            if link:
-                ops.append({'op': 'link', 'path': str(dest), 'target': str(src)})
-                actions.append((target, 'install', f'{dest} -> {src}'))
-            else:
-                ops.append({'op': 'copy', 'from': str(src), 'path': str(dest)})
-                actions.append((target, 'install', f'{src} -> {dest}'))
-                if entry['name'] == 'ask-me':
-                    ops.append({'op': 'write-json', 'path': str(dest / 'source.json'),
-                                'data': {'repo': str(source), 'ref': ref}})
-                    for fname in INDEX_FILES:
-                        ops.append({'op': 'copy-file', 'from': str(source / fname),
-                                    'path': str(dest / fname), 'backup': None})
-                    actions.append((target, 'note', f'{dest.name}/source.json + index copies'))
-        for fname in INDEX_FILES:
-            src, dest = source / fname, target / fname
-            if not src.is_file():
-                continue
-            if dest.is_file() and dest.read_bytes() == src.read_bytes():
-                actions.append((target, 'keep', str(dest)))
-                continue
-            rel = backup_rel(dest) if (dest.exists() or dest.is_symlink()) else None
-            ops.append({'op': 'copy-file', 'from': str(src), 'path': str(dest), 'backup': rel})
-            actions.append((target, 'index', f'{dest}' + (f' (old -> <backup>/{dest.name})' if rel else ' (new)')))
-    return actions, ops
+_EVICT_SEQ = itertools.count()
 
 
 def remove(path):
@@ -181,52 +401,166 @@ def remove(path):
         shutil.rmtree(path)
 
 
+def _injected(op):
+    """Test hook: INSTALL_BASE_FAIL='op:substr' fails that op mid-apply,
+    after any eviction already happened (an intra-op partial failure)."""
+    needle = os.environ.get('INSTALL_BASE_FAIL')
+    if needle and ':' in needle:
+        kind, sub = needle.split(':', 1)
+        if op['op'] == kind and sub in op['path']:
+            raise OSError(f'injected failure at {kind} {op["path"]}')
+
+
+def _stage_dir(src, path):
+    """copytree into a sibling temp, then rename into place."""
+    tmp = path.parent / f'.{path.name}.ibstage-{os.getpid()}'
+    if tmp.exists():
+        shutil.rmtree(tmp)
+    try:
+        shutil.copytree(str(src), str(tmp), symlinks=True)
+        os.rename(tmp, path)
+    except BaseException:
+        shutil.rmtree(tmp, ignore_errors=True)
+        raise
+
+
+def _stage_file(src, path):
+    tmp = path.parent / f'.{path.name}.ibstage-{os.getpid()}'
+    try:
+        shutil.copy2(str(src), str(tmp))
+        os.replace(tmp, path)
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
+
+
+def _stage_text(path, text):
+    tmp = path.parent / f'.{path.name}.ibstage-{os.getpid()}'
+    try:
+        tmp.write_text(text)
+        os.replace(tmp, path)
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
+
+
 def apply_op(op, backup_dir):
     path = Path(op['path'])
     if op['op'] == 'mkdir':
         path.mkdir(parents=True, exist_ok=True)
-    elif op['op'] == 'move':
+        return
+    if op['op'] == 'move':
         dest = backup_dir / op['backup']
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.move(str(path), str(dest))
+        return
+    # evict-and-install ops: any pre-existing path is moved into the backup
+    # BEFORE the new content lands, so a mid-op failure still leaves the
+    # old content recoverable through op['backup'].
+    if path.exists() or path.is_symlink():
+        rel = op.get('backup') or f'files/evicted-{os.getpid()}-{next(_EVICT_SEQ)}-{path.name}'
+        op['backup'] = rel
+        dest = backup_dir / rel
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(path), str(dest))
+    _injected(op)
+    if op['op'] == 'copy':
+        _stage_dir(Path(op['from']), path)
+    elif op['op'] == 'copy-file':
+        _stage_file(Path(op['from']), path)
     elif op['op'] == 'link':
         path.symlink_to(op['target'])
-    elif op['op'] == 'copy':
-        shutil.copytree(op['from'], str(path), symlinks=True)
-    elif op['op'] == 'copy-file':
-        if op.get('backup'):
-            dest = backup_dir / op['backup']
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            shutil.move(str(path), str(dest))
-        shutil.copy2(op['from'], str(path))
     elif op['op'] == 'write-json':
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(op['data'], indent=2) + '\n')
+        _stage_text(path, json.dumps(op['data'], indent=2) + '\n')
+    else:
+        raise SystemExit(f'install-base: unknown op {op["op"]}')
 
 
-def rollback(ops, backup_dir):
-    """Undo completed ops, newest first."""
-    for op in reversed(ops):
+def rollback(ops, backup_dir, verify):
+    """Undo recorded ops, newest first. Returns (problems, errors).
+
+    With verify, ops whose recorded post-state no longer matches are
+    reported as problems and nothing is touched -- a rollback never drops
+    edits made after the install. Restore failures are returned, never
+    silently swallowed.
+    """
+    live = [op for op in reversed(ops)
+            if op.get('state') in ('active', 'done') or op.get('done')]
+    problems = []
+    if verify:
+        for op in live:
+            after = op.get('after')
+            if not after or after.get('sha256') in (None, 'absent'):
+                continue
+            path = Path(op['path'])
+            if describe(path) != after:
+                problems.append(f'{path} changed since install '
+                                f"(was {after['kind']} {after['sha256'][:12]}…)")
+        for op in live:
+            after = op.get('after')
+            if after and after.get('kind') == 'absent' \
+                    and (Path(op['path']).exists() or Path(op['path']).is_symlink()):
+                problems.append(f"{op['path']} was re-created after install")
+        if problems:
+            return problems, []
+    errors = []
+    for op in live:
         path = Path(op['path'])
         try:
             if op['op'] == 'mkdir':
                 if path.is_dir() and not any(path.iterdir()):
                     path.rmdir()
-            elif op['op'] == 'move':
-                backup = backup_dir / op['backup']
-                if backup.exists():
-                    remove(path)
-                    shutil.move(str(backup), str(path))
-            elif op['op'] in ('link', 'copy', 'write-json'):
+                continue
+            if path.exists() or path.is_symlink():
                 remove(path)
-            elif op['op'] == 'copy-file':
-                backup = backup_dir / op['backup'] if op.get('backup') else None
-                if backup is None or backup.exists():
-                    remove(path)
-                if backup is not None and backup.exists():
-                    shutil.move(str(backup), str(path))
+            backup = op.get('backup')
+            if backup:
+                stored = backup_dir / backup
+                if stored.exists() or stored.is_symlink():
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.move(str(stored), str(path))
         except OSError as exc:
-            print(f'  warning: could not restore {path}: {exc}', file=sys.stderr)
+            errors.append(f'{path}: {exc}')
+    return problems, errors
+
+
+def write_json_atomic(path, data):
+    tmp = path.parent / f'.{path.name}.ibtmp-{os.getpid()}'
+    try:
+        tmp.write_text(json.dumps(data, indent=2) + '\n')
+        os.replace(tmp, path)
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
+
+
+def run_ops(ops, backup_dir, manifest, manifest_path):
+    """Execute ops with a per-transition atomic journal; roll back on failure."""
+    try:
+        for op in ops:
+            op['state'] = 'active'
+            write_json_atomic(manifest_path, manifest)  # journal before acting
+            apply_op(op, backup_dir)
+            op['state'] = 'done'
+            # mkdir: later ops fill the directory, so a content digest here
+            # would false-positive as 'edited'; presence is all we verify
+            op['after'] = {'kind': 'dir', 'sha256': None} if op['op'] == 'mkdir' \
+                else describe(Path(op['path']))
+            write_json_atomic(manifest_path, manifest)
+    except Exception as exc:
+        problems, errors = rollback(ops, backup_dir, verify=False)
+        if errors:
+            manifest['rolled_back'] = False
+            manifest['rollback_errors'] = errors
+            write_json_atomic(manifest_path, manifest)
+            raise SystemExit(
+                f'\ninstall-base: failed at {op["op"]} {op["path"]}: {exc}\n'
+                f'rollback itself FAILED for {len(errors)} path(s); manual recovery needed:\n  '
+                + '\n  '.join(errors) + f'\nbackup kept at {backup_dir}')
+        manifest['rolled_back'] = True
+        write_json_atomic(manifest_path, manifest)
+        raise SystemExit(f'\ninstall-base: failed at {op["op"]} {op["path"]}: {exc}\n'
+                         f'previous state restored; backup kept at {backup_dir}')
 
 
 def do_rollback(backup_dir):
@@ -237,10 +571,327 @@ def do_rollback(backup_dir):
     if manifest.get('rolled_back'):
         print(f'{backup_dir}: already rolled back.')
         return
-    rollback([op for op in manifest['ops'] if op.get('done')], backup_dir)
+    problems, errors = rollback(manifest['ops'], backup_dir, verify=True)
+    if problems:
+        manifest['rollback_attempted'] = datetime.now().isoformat(timespec='seconds')
+        manifest['rollback_errors'] = problems
+        write_json_atomic(manifest_path, manifest)
+        raise SystemExit('install-base: refusing to roll back; edits made after the '
+                         'install would be lost:\n  ' + '\n  '.join(problems) +
+                         f'\nbackup kept at {backup_dir}')
+    if errors:
+        manifest['rollback_attempted'] = datetime.now().isoformat(timespec='seconds')
+        manifest['rollback_errors'] = errors
+        write_json_atomic(manifest_path, manifest)
+        raise SystemExit('install-base: rollback incomplete; not marked as restored. '
+                         'Fix the causes and re-run --rollback:\n  ' + '\n  '.join(errors))
     manifest['rolled_back'] = True
-    manifest_path.write_text(json.dumps(manifest, indent=2) + '\n')
+    write_json_atomic(manifest_path, manifest)
     print(f'Restored from {backup_dir}.')
+
+
+# ------------------------------------------------------------------- lock
+
+def read_lock(root):
+    path = root / LOCK_NAME
+    if not path.is_file():
+        return {'version': 1, 'skills': {}}
+    return json.loads(path.read_text())
+
+
+class Mutex:
+    """Project-level mutual exclusion covering lock + payload writes."""
+
+    def __init__(self, root):
+        self.path = root / (LOCK_NAME + '.lock')
+        self.fd = None
+
+    def __enter__(self):
+        try:
+            self.fd = os.open(self.path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        except FileExistsError:
+            raise SystemExit(f'install-base: another run holds {self.path} '
+                             '(remove it only if that run is dead)')
+        os.write(self.fd, f'{os.getpid()} {datetime.now().isoformat()}\n'.encode())
+        return self
+
+    def __exit__(self, *exc):
+        if self.fd is not None:
+            os.close(self.fd)
+        self.path.unlink(missing_ok=True)
+        return False
+
+
+# ------------------------------------------------------------------ checks
+
+def check_name(name):
+    if not NAME_RE.fullmatch(name):
+        raise SystemExit(f'install-base: unsafe skill name {name!r}')
+
+
+def within(path, root, what):
+    """Resolve symlinks; require the result to stay inside root."""
+    rp = path.expanduser().resolve()
+    if rp != root and root not in rp.parents:
+        raise SystemExit(f'install-base: {what} escapes project root: {path} -> {rp}')
+    return rp
+
+
+def check_targets_disjoint(targets):
+    ordered = sorted(targets, key=str)
+    for i, a in enumerate(ordered):
+        for b in ordered[i + 1:]:
+            if a == b or a in b.parents or b in a.parents:
+                raise SystemExit(f'install-base: overlapping targets: {a} and {b}')
+
+
+# ------------------------------------------------------------------- plan
+
+def seq_backup(seq, path):
+    rel = f'files/{seq[0]}/{path.name}'
+    seq[0] += 1
+    return rel
+
+
+def plan(targets, entries, snap, link, retire, retired):
+    """User-level plan: one entity per entry at every target.
+
+    Names being explicitly installed are dropped from the retire list --
+    the install's own evict step replaces them exactly once.
+    """
+    actions, ops = [], []
+    seq = [0]
+    installed = {e['name'] for e in entries}
+    for target in targets:
+        if not target.exists():
+            ops.append({'op': 'mkdir', 'path': str(target)})
+            actions.append((target, 'create', str(target)))
+        if retire:
+            for name in retired_names(retired, target):
+                if name in installed:
+                    continue
+                stale = target / name
+                if stale.exists() or stale.is_symlink():
+                    ops.append({'op': 'move', 'path': str(stale), 'backup': seq_backup(seq, stale)})
+                    actions.append((target, 'retire', f'{stale} -> <backup>/{stale.name}'))
+        for entry in entries:
+            src = snap / skill_dir(entry)
+            dest = target / entry['name']
+            if not src.is_dir():
+                actions.append((target, 'skip', f"{entry['name']}: source missing ({src})"))
+                continue
+            if dest.is_symlink() and link and Path(dest.readlink()) == src:
+                actions.append((target, 'keep', str(dest)))
+                continue
+            backup = seq_backup(seq, dest) if (dest.exists() or dest.is_symlink()) else None
+            if link:
+                ops.append({'op': 'link', 'path': str(dest), 'target': str(src), 'backup': backup})
+                actions.append((target, 'replace' if backup else 'install', f'{dest} -> {src}'))
+            else:
+                ops.append({'op': 'copy', 'from': str(src), 'path': str(dest), 'backup': backup})
+                actions.append((target, 'replace' if backup else 'install', f'{src} -> {dest}'))
+        for fname in INDEX_FILES:
+            src, dest = snap / fname, target / fname
+            if not src.is_file():
+                continue
+            if dest.is_file() and not dest.is_symlink() and dest.read_bytes() == src.read_bytes():
+                actions.append((target, 'keep', str(dest)))
+                continue
+            rel = seq_backup(seq, dest) if (dest.exists() or dest.is_symlink()) else None
+            ops.append({'op': 'copy-file', 'from': str(src), 'path': str(dest), 'backup': rel})
+            actions.append((target, 'index', f'{dest}' + (f' (old -> <backup>/{dest.name})' if rel else ' (new)')))
+    return actions, ops
+
+
+def rel_link(from_dir, to_path):
+    return os.path.relpath(str(to_path), str(from_dir))
+
+
+def remove_ops(root, rec, ops, seq):
+    """Ops that move an un-owned skill's payloads and links into backup."""
+    actions = []
+    for rel in rec['links'] + rec['targets']:
+        p = root / rel
+        if p.exists() or p.is_symlink():
+            ops.append({'op': 'move', 'path': str(p), 'backup': seq_backup(seq, p)})
+            actions.append((p.parent, 'remove', f'{p} -> <backup>/{p.name}'))
+    return actions
+
+
+def plan_project(root, primaries, link_roots, members, snap, lock, owner,
+                 update=False, force=False, meta=None):
+    """Project plan: one real copy per entity in each primary root, relative
+    symlinks in link roots, and a merged .skills-lock.json.
+
+    Same name + same source path + same digest -> identical entity: keep it
+    and merge required_by. Same name but different path or digest -> a
+    different entity: refuse instead of silently swapping or renaming.
+    """
+    actions, ops = [], []
+    seq = [0]
+    skills = {n: dict(r) for n, r in lock['skills'].items()}
+    digests = {m['name']: entity_digest(snap, m) for m in members}
+    member_names = {m['name'] for m in members}
+    modified = []
+
+    for m in members:
+        name, src = m['name'], snap / m['path']
+        check_name(name)
+        rec = skills.get(name)
+        want = digests[name]
+        if rec:
+            # a different source path, or a different payload outside an
+            # update, means a different entity under the same name
+            if rec['source_path'] != m['path'] or (not update and rec['sha256'] != want):
+                raise SystemExit(
+                    f"install-base: '{name}' is already installed from "
+                    f"{rec['source_path']} ({rec['sha256'][:12]}…); requested {m['path']} "
+                    f"({want[:12]}…). Same name, different entity: refusing to mix them.")
+            if not update:
+                # identical entity claimed by another owner: merge required_by,
+                # but only while the on-disk payload still matches the lock
+                state = {t: describe(root / t) for t in rec['targets']
+                         if (root / t).exists() or (root / t).is_symlink()}
+                drift = [t for t, d in state.items() if d['sha256'] != rec['sha256']]
+                drift += [t for t in rec['targets'] if t not in state]
+                if drift:
+                    raise SystemExit(
+                        f"install-base: '{name}' diverged from {LOCK_NAME} at:\n  "
+                        + '\n  '.join(drift)
+                        + '\nrepair with --update --force instead of adding owners')
+                rec['required_by'] = sorted(set(rec['required_by']) | {owner})
+                actions.append((primaries[0], 'dedup',
+                                f"{name} shared by {rec['required_by']}"))
+                continue
+            state = {t: describe(root / t) for t in rec['targets']
+                     if (root / t).exists() or (root / t).is_symlink()}
+            dirty = [t for t, d in state.items() if d['sha256'] != rec['sha256']]
+            missing = [t for t in rec['targets'] if t not in state]
+            missing += [l for l in rec.get('links', [])
+                        if not (root / l).is_symlink()]
+            rec['required_by'] = sorted(set(rec['required_by']) | {owner})
+            if dirty and not force:
+                modified += dirty
+                continue
+            if not dirty and not missing and want == rec['sha256']:
+                actions.append((primaries[0], 'keep', f'{name} unchanged'))
+                continue
+            # new version, dirty+force, or partially missing: replace
+        targets_rel = [str((p / name).relative_to(root)) for p in primaries]
+        links_rel = [str((lr / name).relative_to(root)) for lr in link_roots]
+        for primary in primaries:
+            dest = primary / name
+            if rec is None and (dest.exists() or dest.is_symlink()):
+                raise SystemExit(f'install-base: {dest} exists but is not in {LOCK_NAME}; '
+                                 'refusing to overwrite un-managed content')
+            backup = seq_backup(seq, dest) if (dest.exists() or dest.is_symlink()) else None
+            ops.append({'op': 'copy', 'from': str(src), 'path': str(dest), 'backup': backup})
+            actions.append((primary, 'replace' if backup else 'install', f'{src} -> {dest}'))
+            if name == 'ask-me':
+                ops.append({'op': 'write-json', 'path': str(dest / 'source.json'), 'data': {
+                    'repo': repo_identity_for(m['path'], meta['repo_map'], meta['source']),
+                    'commit': meta['sha'],
+                    'source_path': m['path'],
+                    'snapshot_root': str(meta['snap'].relative_to(root))}})
+                for fname in INDEX_FILES:
+                    ops.append({'op': 'copy-file', 'from': str(snap / fname),
+                                'path': str(dest / fname), 'backup': None})
+        for lr in link_roots:
+            dest = lr / name
+            link_to = rel_link(dest.parent, primaries[0] / name)
+            if dest.is_symlink() and os.readlink(dest) == link_to:
+                continue
+            if (dest.exists() or dest.is_symlink()) and rec is None:
+                raise SystemExit(f'install-base: {dest} exists but is not in {LOCK_NAME}; '
+                                 'refusing to overwrite un-managed content')
+            backup = seq_backup(seq, dest) if (dest.exists() or dest.is_symlink()) else None
+            ops.append({'op': 'link', 'path': str(dest), 'target': link_to, 'backup': backup})
+            actions.append((lr, 'link', f'{dest} -> {link_to}'))
+        skills[name] = {'source_repo': None, 'source_path': m['path'],
+                        'source_commit': None, 'sha256': want,
+                        'required_by': sorted(set((rec or {}).get('required_by', [])) | {owner}),
+                        'targets': targets_rel, 'links': links_rel}
+    if modified:
+        raise SystemExit('install-base: locally modified skills would be lost; re-run '
+                         'with --force (modified copies move to the backup dir first):\n  '
+                         + '\n  '.join(modified))
+
+    if update:
+        for name, rec in skills.items():
+            if owner in rec['required_by'] and name not in member_names:
+                rec['required_by'] = [r for r in rec['required_by'] if r != owner]
+                if not rec['required_by']:
+                    actions += remove_ops(root, rec, ops, seq)
+        skills = {n: r for n, r in skills.items() if r['required_by']}
+
+    for d in primaries + link_roots:
+        if not d.exists():
+            ops.insert(0, {'op': 'mkdir', 'path': str(d)})
+            actions.append((d, 'create', str(d)))
+    for primary in primaries:
+        for fname in INDEX_FILES:
+            src, dest = snap / fname, primary / fname
+            if not src.is_file():
+                continue
+            if dest.is_file() and not dest.is_symlink() and dest.read_bytes() == src.read_bytes():
+                continue
+            rel = seq_backup(seq, dest) if (dest.exists() or dest.is_symlink()) else None
+            ops.append({'op': 'copy-file', 'from': str(src), 'path': str(dest), 'backup': rel})
+            actions.append((primary, 'index', str(dest)))
+    for lr in link_roots:
+        for fname in INDEX_FILES:
+            src, dest = primaries[0] / fname, lr / fname
+            if not (snap / fname).is_file():
+                continue
+            link_to = rel_link(dest.parent, src)
+            if dest.is_symlink() and os.readlink(dest) == link_to:
+                continue
+            rel = seq_backup(seq, dest) if (dest.exists() or dest.is_symlink()) else None
+            ops.append({'op': 'link', 'path': str(dest), 'target': link_to, 'backup': rel})
+            actions.append((lr, 'index', f'{dest} -> {link_to}'))
+
+    new_lock = {'version': 1, 'skills': {n: r for n, r in sorted(skills.items())}}
+    ops.append({'op': 'write-json', 'path': str(root / LOCK_NAME), 'data': new_lock,
+                'backup': seq_backup(seq, root / LOCK_NAME) if (root / LOCK_NAME).exists() else None})
+    actions.append((root, 'lock', str(root / LOCK_NAME)))
+    return actions, ops, new_lock
+
+
+def plan_uninstall(root, lock, suite):
+    actions, ops = [], []
+    seq = [0]
+    skills = {n: dict(r) for n, r in lock['skills'].items()}
+    touched = [n for n, r in skills.items() if suite in r['required_by']]
+    if not touched:
+        raise SystemExit(f"install-base: suite {suite!r} owns nothing in {LOCK_NAME}")
+    for name in touched:
+        rec = skills[name]
+        rec['required_by'] = [r for r in rec['required_by'] if r != suite]
+        if rec['required_by']:
+            actions.append((root, 'keep', f"{name} still required by {rec['required_by']}"))
+        else:
+            actions += remove_ops(root, rec, ops, seq)
+    skills = {n: r for n, r in skills.items() if r['required_by']}
+    ops.append({'op': 'write-json', 'path': str(root / LOCK_NAME),
+                'data': {'version': 1, 'skills': dict(sorted(skills.items()))},
+                'backup': seq_backup(seq, root / LOCK_NAME)
+                if (root / LOCK_NAME).exists() else None})
+    actions.append((root, 'lock', str(root / LOCK_NAME)))
+    return actions, ops
+
+
+def show(source, sha, ref, mode, method, backup_dir, names, actions):
+    print(f'source: {source}')
+    print(f'ref:    {sha}' + (f' ({ref})' if ref != sha else ''))
+    print(f'mode:   {mode}  method: {method}')
+    print(f'backup: {backup_dir}')
+    print(f"skills: {', '.join(names)}")
+    shown = None
+    for target, action, detail in actions:
+        if target != shown:
+            shown = target
+            print(f'\n[{target}]')
+        print(f'  {action:8} {detail}')
 
 
 def main():
@@ -252,75 +903,168 @@ def main():
     mode.add_argument('--rollback', type=Path, metavar='BACKUP_DIR',
                       help='restore a previous install from its backup directory')
     parser.add_argument('--project', action='store_true',
-                        help='copy into ./.agents/skills and ./.claude/skills')
+                        help='copy into ./.agents/skills (+ ./.claude/skills links) with a lock')
+    parser.add_argument('--suite', help='install a suite from suites/<name>.json (project only)')
+    parser.add_argument('--update', action='store_true',
+                        help='re-apply --suite at --ref, replacing only unmodified skills')
+    parser.add_argument('--uninstall', metavar='SUITE',
+                        help='drop SUITE ownership; remove skills left with no owner')
+    parser.add_argument('--force', action='store_true',
+                        help='with --update: replace locally modified skills (old copy backed up)')
     parser.add_argument('--source', type=Path, default=DEFAULT_SOURCE,
-                        help='stable clone to install from (default: %(default)s)')
+                        help='clone to install from (default: %(default)s)')
     parser.add_argument('--ref',
-                        help='commit --source must be checked out at (required to install)')
+                        help='commit-ish inside --source to install (resolved to a full SHA)')
     parser.add_argument('--target', action='append', type=Path,
-                        help='override install targets (repeatable)')
+                        help='override install targets (repeatable; bounded to the project with --project)')
     parser.add_argument('--skill', action='append',
-                        help='install only these index names (repeatable); default: base suite')
-    parser.add_argument('--list', action='store_true', help='list index names and exit')
+                        help='install these index names or paths (repeatable); default: base suite')
+    parser.add_argument('--list', action='store_true', help='list index entries and exit')
     args = parser.parse_args()
 
     if args.rollback:
         do_rollback(args.rollback.expanduser().resolve())
         return
+    if args.suite and not args.project:
+        parser.error('--suite requires --project')
+    if args.update and not args.suite:
+        parser.error('--update requires --suite')
+    if args.uninstall and not args.project:
+        parser.error('--uninstall requires --project')
+    if args.force and not args.update:
+        parser.error('--force only applies to --update')
+    if args.suite and args.skill:
+        parser.error('--suite and --skill are mutually exclusive')
+
+    root = Path.cwd().resolve()
+
+    if args.uninstall:
+        with Mutex(root):
+            lock = read_lock(root)
+            ts = datetime.now().strftime('%Y%m%d-%H%M%S')
+            backup_dir = backup_dir_for(
+                [root / PROJECT_PRIMARY] + [root / p for p in PROJECT_LINK_ROOTS], ts)
+            actions, ops = plan_uninstall(root, lock, args.uninstall)
+            show('(lock)', '-', '-', 'APPLY' if args.apply else 'DRY-RUN', 'remove',
+                 backup_dir, sorted(lock['skills']), actions)
+            if not args.apply:
+                print('\nDry run only; re-run with --apply to uninstall.')
+                return
+            backup_dir.mkdir(parents=True)
+            manifest_path = backup_dir / 'manifest.json'
+            manifest = {'created': ts, 'mode': 'uninstall', 'suite': args.uninstall, 'ops': ops}
+            write_json_atomic(manifest_path, manifest)
+            run_ops(ops, backup_dir, manifest, manifest_path)
+            print(f'\nDone. Backup: {backup_dir} (restore with --rollback {backup_dir})')
+        return
 
     source = args.source.expanduser().resolve()
     if args.list:
-        _, base, index, _ = load_index(source)
-        for entry in index['skills']:
-            mark = '*' if entry['name'] in base else ' '
-            print(f"{mark} {entry['name']:32} {entry['suite']:12} {entry['path']}")
-        print('(* = base suite)')
+        skills, base, _, _ = load_source_index(source)
+        counts = {}
+        for e in skills:
+            counts[e['name']] = counts.get(e['name'], 0) + 1
+        for e in skills:
+            qual = skill_dir(e) if counts[e['name']] > 1 else ''
+            mark = '*' if e['name'] in base else ' '
+            print(f"{mark} {e['name']:32} {e['suite']:12} {qual or e['path']}")
+        print('(* = base suite; ambiguous names resolve only by full path)')
         return
     if not args.ref:
-        parser.error('--ref is required (the commit --source is pinned at)')
-    head = verify_source(source, args.ref)
-    by_name, base, index, retired = load_index(source)
-    entries = resolve(args.skill or base, by_name)
-    targets = [t.expanduser().resolve()
-               for t in (args.target or (PROJECT_TARGETS if args.project else USER_TARGETS))]
-    link = not args.project
+        parser.error('--ref is required (the commit-ish inside --source to install)')
+    sha = resolve_commit(source, args.ref)
     ts = datetime.now().strftime('%Y%m%d-%H%M%S')
-    backup_dir = backup_dir_for(targets, ts)
-    actions, ops = plan(targets, entries, source, head, link, not args.project, retired)
 
-    print(f'source: {source}')
-    print(f'ref:    {head}' + (f' ({args.ref})' if args.ref != head else ''))
-    print(f"mode:   {'APPLY' if args.apply else 'DRY-RUN'}  method: {'symlink' if link else 'copy'}")
-    print(f'backup: {backup_dir}')
-    print(f"skills: {', '.join(e['name'] for e in entries)}")
-    shown = None
-    for target, action, detail in actions:
-        if target != shown:
-            shown = target
-            print(f'\n[{target}]')
-        print(f'  {action:8} {detail}')
+    if args.project:
+        primaries = [within(t, root, '--target') for t in args.target] \
+            if args.target else [within(Path(PROJECT_PRIMARY), root, 'target')]
+        link_roots = [] if args.target else \
+            [within(Path(p), root, 'target') for p in PROJECT_LINK_ROOTS]
+        targets = primaries + link_roots
+        snap_root = within(Path(SNAP_DIRNAME), root, 'snapshot dir')
+        for t in targets:
+            if t == snap_root or snap_root in t.parents or t in snap_root.parents:
+                raise SystemExit(f'install-base: target overlaps snapshot dir: {t}')
+            if t == root:
+                raise SystemExit('install-base: refusing to use the project root as a target')
+    else:
+        primaries, link_roots = [], []
+        targets = [t.expanduser().resolve() for t in (args.target or USER_TARGETS)]
+        parents = {t.parent for t in targets}
+        base_dir = Path(os.path.commonpath([str(p) for p in parents])) \
+            if len(parents) > 1 else next(iter(parents))
+        snap_root = base_dir / SNAP_DIRNAME
+    check_targets_disjoint(targets)
+
+    # dry-run must write nothing: export into a scratch dir instead of the
+    # persistent snapshot root
+    scratch = None
+    if not args.apply:
+        scratch = tempfile.TemporaryDirectory(prefix='install-base-dry-')
+        snap_root = Path(scratch.name)
+
+    # selection metadata comes straight from the commit (git show), the
+    # payload from one immutable export of everything the install needs
+    skills, base, retired, _src = parse_source_index(
+        git_show(source, sha, 'index.json'),
+        git_show(source, sha, '.sync/index-source.json'), f'{source}@{sha}')
+    repo_map = load_repo_map(git_show(source, sha, '.sync/upstreams.json'))
+
+    if args.suite:
+        suite, members = parse_suite(git_show(source, sha, f'suites/{args.suite}.json'),
+                                     args.suite)
+        names = [m['name'] for m in members]
+    else:
+        entries = closure(resolve_selectors(args.skill or base, skills), skills)
+        members = [{'name': e['name'], 'path': skill_dir(e), 'depends': []} for e in entries]
+        names = [e['name'] for e in entries]
+        suite = None
+    # the snapshot is the whole tree at sha: content-addressed and
+    # complete, so later installs at the same commit can always reuse it
+    snap = export_snapshot(source, sha, ['.'], snap_root)
+    for m in members:
+        if not (snap / m['path']).is_dir():
+            raise SystemExit(f"install-base: member path missing in commit "
+                             f"{sha[:12]}: {m['path']}")
+
+    if args.project:
+        with Mutex(root):
+            lock = read_lock(root)
+            owner = args.suite or EXPLICIT
+            actions, ops, new_lock = plan_project(
+                root, primaries, link_roots, members, snap, lock, owner,
+                update=args.update, force=args.force,
+                meta={'repo_map': repo_map, 'source': source, 'sha': sha, 'snap': snap})
+            for rec in new_lock['skills'].values():
+                if rec['source_repo'] is None:
+                    rec['source_repo'] = repo_identity_for(rec['source_path'], repo_map, source)
+                rec['source_commit'] = sha
+            ops[-1]['data'] = new_lock  # lock op rewritten with identities
+            method = 'copy+links'
+    else:
+        actions, ops = plan(targets, entries, snap, True, True, retired)
+        method = 'symlink'
+
+    backup_dir = backup_dir_for(targets or [root], ts)
+    show(source, sha, args.ref, 'APPLY' if args.apply else 'DRY-RUN', method,
+         backup_dir, names, actions)
+    if suite and suite.get('note'):
+        print(f"\nnote: {suite['note']}")
 
     if not args.apply:
         print('\nDry run only; re-run with --apply to install.')
+        if scratch:
+            scratch.cleanup()
         return
     if not ops:
         print('\nNothing to do.')
         return
     backup_dir.mkdir(parents=True)
-    manifest = {'created': ts, 'source': str(source), 'ref': head, 'ops': ops}
     manifest_path = backup_dir / 'manifest.json'
-    manifest_path.write_text(json.dumps(manifest, indent=2) + '\n')
-    try:
-        for op in ops:
-            apply_op(op, backup_dir)
-            op['done'] = True
-            manifest_path.write_text(json.dumps(manifest, indent=2) + '\n')
-    except Exception as exc:
-        rollback([o for o in ops if o.get('done')], backup_dir)
-        manifest['rolled_back'] = True
-        manifest_path.write_text(json.dumps(manifest, indent=2) + '\n')
-        raise SystemExit(f'\ninstall-base: failed at {op["op"]} {op["path"]}: {exc}\n'
-                         f'previous state restored; backup kept at {backup_dir}')
+    manifest = {'created': ts, 'source': str(source), 'commit': sha,
+                'mode': 'project' if args.project else 'user', 'ops': ops}
+    write_json_atomic(manifest_path, manifest)
+    run_ops(ops, backup_dir, manifest, manifest_path)
     print(f'\nDone. Backup: {backup_dir} (restore with --rollback {backup_dir})')
 
 

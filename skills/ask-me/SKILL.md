@@ -15,14 +15,15 @@ Route to skills through this repository's index. Recommend only; never install o
    - `../index.json` (a copy placed at the install root),
    - `../../index.json` (running from a clone, at `skills/ask-me/`).
    If none exists, say the index is missing and stop.
-2. Locate the source repository — index paths resolve against it:
-   - `source.json` next to this `SKILL.md` (written into copied installs): its `repo` is the absolute path of the clone and `ref` the commit it was installed from. If `repo` does not exist, say the source clone is gone and stop.
-   - Otherwise the repository root is `../../` (this file sits at `skills/ask-me/` inside the clone, directly or through a symlink); `ref` is `git -C <repo> rev-parse HEAD`.
+2. Locate the pinned source — index paths resolve against it:
+   - `source.json` next to this `SKILL.md` (written into copied installs). It carries `commit` (full SHA), `source_path` (this skill's qualified repository path), `snapshot_root` (path relative to the project root of the immutable exported tree it was installed from), and `repo` (portable identity: upstream slug or remote URL; `local` means the clone has no remote). First verify `<snapshot_root>/.snapshot-complete` equals `commit`; if it does, read all skill bodies from `<snapshot_root>/<path>` — that tree cannot drift. If the snapshot is missing, resolve `repo` to a local clone through local config (never guess a machine path), verify the clone can reach `commit` (`git -C <clone> cat-file -e <commit>`), and only trust its worktree when `git -C <clone> rev-parse HEAD` equals `commit`; otherwise warn that the checkout has drifted. If the source cannot be resolved at all, say so and stop.
+   - Otherwise the repository root is `../../` (this file sits at `skills/ask-me/` inside the clone, directly or through a symlink); `commit` is `git -C <repo> rev-parse HEAD`.
 3. From the user's request, recommend 1–3 entries. For each: name, one-line summary, and its relative `path`. Then **stop and wait**; do not read skill bodies yet.
-4. **"Use it here" / "就在这里用"**: read the chosen `SKILL.md` at `<repo>/<path>`, plus every entry in its `depends` list. Dependencies only need to sit beside it as directories (`eli5` and `show-me` need the sibling `html` directory; do not read a dependency's body). Then follow the loaded instructions here. This is degraded use: argument substitution and the skill's own relative-path handling are not guaranteed; for full fidelity install instead.
-5. **"Install into this project" / "装进项目"**: do not copy files yourself. Tell the user to run:
-   `python3 <repo>/scripts/install-base --apply --project --source <repo> --ref <ref> --skill <name>`
-   It copies the skill and its dependencies into `.agents/skills/` and `.claude/skills/`.
+4. **"Use it here" / "就在这里用"**: read the chosen `SKILL.md` at the verified source root from step 2 (`<snapshot_root>/<path>` when the snapshot verified), plus every entry in its `depends` list. Dependencies only need to sit beside it as directories (`eli5` and `show-me` need the sibling `html` directory; do not read a dependency's body). Then follow the loaded instructions here. This is degraded use: argument substitution and the skill's own relative-path handling are not guaranteed; for full fidelity install instead.
+5. **"Install into this project" / "装进项目"**: do not copy files yourself. Tell the user to run, with every substituted path quoted:
+   `python3 "<repo>/scripts/install-base" --apply --project --source "<repo>" --ref "<commit>" --skill "<name-or-path>"`
+   It copies the skill and its dependencies into `.agents/skills/` and links them from `.claude/skills/`. For a declared suite use `--suite "<name>"` instead of `--skill` (or the `bin/install-<suite>` wrappers). When a bare name is ambiguous across sources (e.g. `tdd` exists in both matt and pstack), use the full repository path shown by `--list`.
+6. **"Uninstall / update a suite"**: `python3 "<repo>/scripts/install-base" --apply --project --uninstall "<suite>"` removes only skills no other owner needs; `--update --suite "<suite>" --ref "<commit>"` refreshes a suite and refuses to clobber local edits unless `--force` is given (edited copies are moved into the backup dir first).
 
 ## Notes
 

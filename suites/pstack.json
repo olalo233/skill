@@ -1,0 +1,14 @@
+{
+  "name": "pstack",
+  "title": "pstack (cursor/plugins, vendored whole at vendor/pstack)",
+  "kind": "package",
+  "note": "Installed as one package entity preserving the upstream layout (skills/, agents/, docs/, automations/, plugin.json). On Cursor prefer the native plugin; elsewhere read vendor docs/harness/claude-code.md for the degraded-use mapping.",
+  "members": [
+    {
+      "name": "pstack",
+      "path": "vendor/pstack",
+      "depends": [],
+      "role": "package"
+    }
+  ]
+}

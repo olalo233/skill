@@ -1,0 +1,83 @@
+{
+  "name": "matt-dev",
+  "title": "Matt Pocock development loop (vendored at vendor/matt)",
+  "kind": "skills",
+  "note": "The 9 review-selected members plus the sibling skills their SKILL.md bodies actually invoke. matt-flow additionally routes to optional skills not in this suite: handoff, prototype, grill-me, research, teach, improve-codebase-architecture (vendored but not required) and resolving-merge-conflicts, writing-great-skills (not vendored).",
+  "members": [
+    {
+      "name": "codebase-design",
+      "path": "vendor/matt/skills/engineering/codebase-design",
+      "depends": [],
+      "role": "member"
+    },
+    {
+      "name": "code-review",
+      "path": "vendor/matt/skills/engineering/code-review",
+      "depends": ["setup-matt-pocock-skills"],
+      "role": "member"
+    },
+    {
+      "name": "diagnosing-bugs",
+      "path": "vendor/matt/skills/engineering/diagnosing-bugs",
+      "depends": [],
+      "role": "member"
+    },
+    {
+      "name": "domain-modeling",
+      "path": "vendor/matt/skills/engineering/domain-modeling",
+      "depends": [],
+      "role": "dependency",
+      "evidence": "grill-with-docs SKILL.md: 'Call the Skill tool twice, for \"grilling\" and \"domain-modeling\"'"
+    },
+    {
+      "name": "grill-with-docs",
+      "path": "vendor/matt/skills/engineering/grill-with-docs",
+      "depends": ["domain-modeling", "grilling"],
+      "role": "member"
+    },
+    {
+      "name": "grilling",
+      "path": "vendor/matt/skills/productivity/grilling",
+      "depends": [],
+      "role": "dependency",
+      "evidence": "grill-with-docs SKILL.md: 'Call the Skill tool twice, for \"grilling\" and \"domain-modeling\"'"
+    },
+    {
+      "name": "implement",
+      "path": "vendor/matt/skills/engineering/implement",
+      "depends": ["code-review", "tdd"],
+      "role": "member"
+    },
+    {
+      "name": "matt-flow",
+      "path": "vendor/matt/skills/engineering/matt-flow",
+      "depends": [],
+      "role": "member"
+    },
+    {
+      "name": "setup-matt-pocock-skills",
+      "path": "vendor/matt/skills/engineering/setup-matt-pocock-skills",
+      "depends": [],
+      "role": "dependency",
+      "evidence": "to-spec / to-tickets / code-review SKILL.md: 'tell the user to run /setup-matt-pocock-skills'"
+    },
+    {
+      "name": "tdd",
+      "path": "vendor/matt/skills/engineering/tdd",
+      "depends": ["codebase-design"],
+      "role": "member"
+    },
+    {
+      "name": "to-spec",
+      "path": "vendor/matt/skills/engineering/to-spec",
+      "depends": ["setup-matt-pocock-skills"],
+      "role": "member"
+    },
+    {
+      "name": "to-tickets",
+      "path": "vendor/matt/skills/engineering/to-tickets",
+      "depends": ["setup-matt-pocock-skills"],
+      "role": "member"
+    }
+  ]
+}
