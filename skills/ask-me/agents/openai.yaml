@@ -1,0 +1,5 @@
+interface:
+  display_name: "Ask Me"
+  short_description: "Recommend a skill from the repository index, then wait"
+policy:
+  allow_implicit_invocation: false

@@ -36,7 +36,7 @@ for name, dependency in [('show-me','html'),('eli5','html'),('grill-me','grillin
     if name in skills and dependency not in skills: errors.append(f'{name}: missing dependency {dependency}')
 
 manifest = json.loads((ROOT / '.sync/upstreams.json').read_text())
-covered = set()
+covered = set(manifest.get('local_skills', []))
 for source in manifest['sources']:
     if not re.fullmatch(r'[a-f0-9]{40}', source['revision']): errors.append('Invalid upstream commit')
     for mapping in source['paths']:

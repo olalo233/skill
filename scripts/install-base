@@ -1,0 +1,166 @@
+#!/usr/bin/env python3
+"""Install skills from this repository into agent skill directories.
+
+Default is a dry run: pass --apply to change anything.
+
+User-level install (default): symlinks the base suite into
+  ~/.agents/skills, ~/.claude/skills, ~/.gemini/config/skills
+Project install (--project): copies selected skills into
+  ./.agents/skills and ./.claude/skills
+
+Entries moved out of the resident set, and conflicting existing entries,
+are moved to a sibling backup directory <target>.bak-<timestamp>;
+nothing is deleted.
+"""
+import argparse
+import json
+import shutil
+import sys
+from datetime import datetime
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+USER_TARGETS = [Path.home() / '.agents/skills',
+                Path.home() / '.claude/skills',
+                Path.home() / '.gemini/config/skills']
+PROJECT_TARGETS = [Path('.agents/skills'), Path('.claude/skills')]
+# Formerly resident entries retired from the base suite (moved to backup, never deleted).
+RETIRED = ['brainstorming', 'service-archive', 'work-archive', 'adr', 'repo-eval']
+
+
+def load_index():
+    index = json.loads((ROOT / 'index.json').read_text())
+    src = json.loads((ROOT / '.sync/index-source.json').read_text())
+    base = src['suites']['base']['skills']
+    by_name = {}
+    for entry in index['skills']:
+        by_name.setdefault(entry['name'], entry)
+    return by_name, base, index
+
+
+def resolve(names, by_name):
+    """Expand names with their dependency closure, in install order."""
+    picked, seen = [], set()
+
+    def add(name):
+        if name in seen:
+            return
+        entry = by_name.get(name)
+        if entry is None:
+            raise SystemExit(f'Unknown skill: {name} (not in index.json)')
+        for dep in entry['depends']:
+            add(dep)
+        seen.add(name)
+        picked.append(entry)
+
+    for name in names:
+        add(name)
+    return picked
+
+
+def plan_target(target, entries, link, ts):
+    """Return list of (action, detail) tuples for one target directory."""
+    actions = []
+    wanted = {e['name'] for e in entries}
+    backup = target.parent / f'{target.name}.bak-{ts}'
+    for name in sorted(RETIRED):
+        stale = target / name
+        if stale.exists() or stale.is_symlink():
+            actions.append(('retire', f'{stale} -> {backup}/{name}'))
+    for entry in entries:
+        src = ROOT / entry['path'].rsplit('/', 1)[0]
+        dest = target / entry['name']
+        if not src.is_dir():
+            actions.append(('skip', f'{entry["name"]}: source missing ({src})'))
+            continue
+        if dest.is_symlink() and link:
+            if Path(dest.readlink()) == src:
+                actions.append(('keep', str(dest)))
+                continue
+            actions.append(('relink', f'{dest} -> {backup}/{entry["name"]}, new link to {src}'))
+        elif dest.exists() or dest.is_symlink():
+            actions.append(('replace', f'{dest} -> {backup}/{entry["name"]}, install {src}'))
+        else:
+            actions.append(('install', f'{dest} -> {src}' if link else f'{src} -> {dest}'))
+    return actions, backup
+
+
+def apply_plan(target, entries, link, ts):
+    actions, backup = plan_target(target, entries, link, ts)
+    if any(a[0] in ('retire', 'relink', 'replace') for a in actions):
+        backup.mkdir(parents=True, exist_ok=True)
+    for name in sorted(RETIRED):
+        stale = target / name
+        if stale.exists() or stale.is_symlink():
+            shutil.move(str(stale), str(backup / name))
+    for entry in entries:
+        src = ROOT / entry['path'].rsplit('/', 1)[0]
+        dest = target / entry['name']
+        if not src.is_dir():
+            continue
+        if dest.is_symlink() and link and Path(dest.readlink()) == src:
+            continue
+        if dest.exists() or dest.is_symlink():
+            shutil.move(str(dest), str(backup / entry['name']))
+        if link:
+            dest.symlink_to(src)
+        else:
+            shutil.copytree(src, dest, symlinks=True)
+    return actions
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__,
+                                     formatter_class=argparse.RawDescriptionHelpFormatter)
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument('--dry-run', action='store_true', help='show actions only (default)')
+    mode.add_argument('--apply', action='store_true', help='perform the install')
+    parser.add_argument('--project', action='store_true',
+                        help='copy into ./.agents/skills and ./.claude/skills')
+    parser.add_argument('--target', action='append', type=Path,
+                        help='override install targets (repeatable)')
+    parser.add_argument('--skill', action='append',
+                        help='install only these index names (repeatable); default: base suite')
+    parser.add_argument('--list', action='store_true', help='list index names and exit')
+    args = parser.parse_args()
+
+    by_name, base, index = load_index()
+    if args.list:
+        for entry in index['skills']:
+            mark = '*' if entry['name'] in base else ' '
+            print(f"{mark} {entry['name']:32} {entry['suite']:12} {entry['path']}")
+        print('(* = base suite)')
+        return
+    entries = resolve(args.skill or base, by_name)
+    targets = args.target or (PROJECT_TARGETS if args.project else USER_TARGETS)
+    link = not args.project
+    ts = datetime.now().strftime('%Y%m%d-%H%M%S')
+
+    print(f"repo: {ROOT}")
+    print(f"mode: {'APPLY' if args.apply else 'DRY-RUN'}  method: {'symlink' if link else 'copy'}")
+    print(f"skills: {', '.join(e['name'] for e in entries)}")
+    for target in targets:
+        actions, _ = plan_target(target, entries, link, ts)
+        print(f'\n[{target}]')
+        if not target.exists():
+            print(f'  create  {target}')
+        for action, detail in actions:
+            print(f'  {action:8} {detail}')
+        if args.apply:
+            target.mkdir(parents=True, exist_ok=True)
+            apply_plan(target, entries, link, ts)
+    if args.apply:
+        for target in targets:
+            ask = target / 'ask-me'
+            if ask.is_dir() and not ask.is_symlink():
+                shutil.copy2(ROOT / 'index.json', ask / 'index.json')
+                shutil.copy2(ROOT / 'INDEX.md', ask / 'INDEX.md')
+            for fname in ('index.json', 'INDEX.md'):
+                shutil.copy2(ROOT / fname, target / fname)
+        print('\nDone. Retired/conflicting entries were moved to <target>.bak-* siblings.')
+    else:
+        print('\nDry run only; re-run with --apply to install.')
+
+
+if __name__ == '__main__':
+    main()

@@ -1,5 +1,8 @@
 {
   "version": 1,
+  "local_skills": [
+    "ask-me"
+  ],
   "sources": [
     {
       "repo": "mathbullet/skills",
@@ -71,6 +74,38 @@
           "destination": "licenses/mattpocock-skills-MIT.txt"
         }
       ],
+      "ref": "main",
+      "vendor_paths": [
+        {
+          "source": "skills",
+          "destination": "vendor/matt/skills"
+        },
+        {
+          "source": "README.md",
+          "destination": "vendor/matt/README.md"
+        },
+        {
+          "source": "LICENSE",
+          "destination": "vendor/matt/LICENSE"
+        }
+      ]
+    },
+    {
+      "repo": "cursor/plugins",
+      "revision": "2eaf46574b25cdf7ef8c849837099b866b7438ce",
+      "paths": [
+        {
+          "source": "pstack/LICENSE",
+          "destination": "licenses/cursor-plugins-pstack-MIT.txt"
+        }
+      ],
+      "vendor_paths": [
+        {
+          "source": "pstack",
+          "destination": "vendor/pstack"
+        }
+      ],
+      "vendor_seeded": false,
       "ref": "main"
     },
     {
