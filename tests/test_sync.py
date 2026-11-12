@@ -133,6 +133,25 @@ class MergeTests(unittest.TestCase):
                 self.assertEqual([s['revision'] for s in json.loads(config.read_text())['sources']],
                                  ['a' * 40, 'b' * 40])
 
+    def test_vendor_paths_merge_into_vendor_destination(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp); (root / '.sync').mkdir()
+            path = root / 'vendor/demo/skill/SKILL.md'
+            path.parent.mkdir(parents=True); path.write_bytes(b'old')
+            manifest = {'sources': [{'repo': 'fixture/demo', 'ref': 'main', 'revision': 'a' * 40,
+                        'paths': [{'source': 'LICENSE', 'destination': 'licenses/demo.txt'}],
+                        'vendor_paths': [{'source': 'skill', 'destination': 'vendor/demo/skill'}]}]}
+            config = root / '.sync/upstreams.json'; config.write_text(json.dumps(manifest))
+            def fake_snapshot(repo, revision, source):
+                if source == 'LICENSE':
+                    return {'': (b'same license', '100644')}
+                return {'SKILL.md': (b'old' if revision == 'a' * 40 else b'new', '100644')}
+            with patch.object(sync, 'git', return_value=('b' * 40).encode()), \
+                 patch.object(sync, 'snapshot', side_effect=fake_snapshot):
+                self.assertEqual(sync.sync(root, root / 'report.json', root / 'cache'), 0)
+            self.assertEqual(path.read_bytes(), b'new')
+            self.assertEqual(json.loads(config.read_text())['sources'][0]['revision'], 'b' * 40)
+
     def test_summary_omits_diffs_and_escapes_cells(self):
         report = {'sources': [{'repo': 'fixture/demo', 'status': 'blocked', 'from': 'a' * 40,
                               'to': 'b' * 40, 'conflicts': ['skills/a|b.md', 'skills/c.md'],

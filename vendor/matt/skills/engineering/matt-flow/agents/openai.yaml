@@ -1,0 +1,5 @@
+interface:
+  display_name: "Matt Flow"
+  short_description: "Which Matt skill or flow fits the situation"
+policy:
+  allow_implicit_invocation: false

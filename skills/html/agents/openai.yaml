@@ -1,0 +1,5 @@
+interface:
+  display_name: "HTML"
+  short_description: "Visual explanatory documents in HTML"
+policy:
+  allow_implicit_invocation: true

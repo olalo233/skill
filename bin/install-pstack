@@ -1,0 +1,8 @@
+#!/bin/sh
+# Install the pstack suite (the whole vendored vendor/pstack package)
+# into the current project. On Cursor prefer the native plugin instead;
+# this exists for runtimes that read .agents/skills / .claude/skills.
+# Thin wrapper; extra flags pass through. Dry-run unless --apply.
+set -eu
+REPO="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
+exec python3 "$REPO/scripts/install-base" --project --source "$REPO" --ref HEAD --suite pstack "$@"

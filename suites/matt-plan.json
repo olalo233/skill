@@ -1,0 +1,53 @@
+{
+  "name": "matt-plan",
+  "title": "Matt Pocock planning loop (vendored at vendor/matt)",
+  "kind": "skills",
+  "note": "Sub-suite shared by design and matt-dev: the clarify/spec/ticket half of the Matt workflow. Install directly only if you want the planning loop without implementation skills.",
+  "members": [
+    {
+      "name": "codebase-design",
+      "path": "vendor/matt/skills/engineering/codebase-design",
+      "depends": [],
+      "role": "member"
+    },
+    {
+      "name": "domain-modeling",
+      "path": "vendor/matt/skills/engineering/domain-modeling",
+      "depends": [],
+      "role": "dependency",
+      "evidence": "grill-with-docs SKILL.md: 'Call the Skill tool twice, for \"grilling\" and \"domain-modeling\"'"
+    },
+    {
+      "name": "grilling",
+      "path": "vendor/matt/skills/productivity/grilling",
+      "depends": [],
+      "role": "dependency",
+      "evidence": "grill-with-docs SKILL.md: 'Call the Skill tool twice, for \"grilling\" and \"domain-modeling\"'"
+    },
+    {
+      "name": "grill-with-docs",
+      "path": "vendor/matt/skills/engineering/grill-with-docs",
+      "depends": ["domain-modeling", "grilling"],
+      "role": "member"
+    },
+    {
+      "name": "setup-matt-pocock-skills",
+      "path": "vendor/matt/skills/engineering/setup-matt-pocock-skills",
+      "depends": [],
+      "role": "dependency",
+      "evidence": "to-spec / to-tickets / code-review SKILL.md: 'tell the user to run /setup-matt-pocock-skills'"
+    },
+    {
+      "name": "to-spec",
+      "path": "vendor/matt/skills/engineering/to-spec",
+      "depends": ["setup-matt-pocock-skills"],
+      "role": "member"
+    },
+    {
+      "name": "to-tickets",
+      "path": "vendor/matt/skills/engineering/to-tickets",
+      "depends": ["setup-matt-pocock-skills"],
+      "role": "member"
+    }
+  ]
+}

@@ -14,13 +14,19 @@ for relative in sorted(set(filter(None, files))):
         continue
     if path.is_symlink():
         errors.append(f'{relative}: symlinks are not distributable'); continue
-    content = path.read_text(encoding='utf-8')
-    for label, pattern in {
+    try:
+        content = path.read_text(encoding='utf-8')
+    except UnicodeDecodeError:
+        continue  # binary assets can't hold the text markers scanned below
+    checks = {
         'personal home path': r'/(?:Users|home)/[A-Za-z0-9_.-]+/',
         'private address': r'\b(?:10\.(?:\d+\.){2}\d+|192\.168\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[01])\.\d+\.\d+)\b',
         'merge conflict': r'^(?:<<<<<<< |=======\s*$|>>>>>>> )',
         'private key': r'-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----',
-    }.items():
+    }
+    if relative.startswith('vendor/'):
+        del checks['personal home path']  # verbatim upstream text may use /Users/you examples
+    for label, pattern in checks.items():
         if re.search(pattern, content, re.M): errors.append(f'{relative}: {label}')
 
 skills = {p.parent.name: p for p in (ROOT / 'skills').glob('*/SKILL.md')}
@@ -32,11 +38,16 @@ for name, path in skills.items():
     if not re.search(r'^name: ["\']?' + re.escape(name) + r'["\']?\s*$', frontmatter, re.M):
         errors.append(f'{name}: frontmatter name mismatch')
     if not re.search(r'^description: .+', frontmatter, re.M): errors.append(f'{name}: missing description')
-for name, dependency in [('show-me','html'),('eli5','html'),('grill-me','grilling')]:
-    if name in skills and dependency not in skills: errors.append(f'{name}: missing dependency {dependency}')
+vendored = {p.parent.name for p in ROOT.glob('vendor/**/SKILL.md')}
+available = set(skills) | vendored
+for name, dependency in [('show-me','html'),('eli5','html'),('grill-me','grilling'),
+                         ('ux-spec','grilling'),('ux-spec','domain-modeling'),
+                         ('system-design','grilling'),('system-design','domain-modeling')]:
+    if name in available and dependency not in available:
+        errors.append(f'{name}: missing dependency {dependency}')
 
 manifest = json.loads((ROOT / '.sync/upstreams.json').read_text())
-covered = set()
+covered = set(manifest.get('local_skills', []))
 for source in manifest['sources']:
     if not re.fullmatch(r'[a-f0-9]{40}', source['revision']): errors.append('Invalid upstream commit')
     for mapping in source['paths']:

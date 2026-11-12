@@ -1,0 +1,5 @@
+interface:
+  display_name: "UX Spec"
+  short_description: "Write user journeys, page inventory, state matrix, and interaction copy into docs/ux/"
+policy:
+  allow_implicit_invocation: false

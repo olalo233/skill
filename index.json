@@ -1,0 +1,863 @@
+{
+  "version": 1,
+  "generated_by": "scripts/build_index.py",
+  "skills": [
+    {
+      "name": "api-and-interface-design",
+      "suite": "design",
+      "summary": "Guides stable API and interface design.",
+      "path": "skills/api-and-interface-design/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "ask-me",
+      "suite": "base",
+      "summary": "Use when the user asks which skill fits a task, or invokes /ask-me to pick and load a skill from this repository's index.",
+      "path": "skills/ask-me/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "eli5",
+      "suite": "base",
+      "summary": "Explain a topic like I'm a 5 year old.",
+      "path": "skills/eli5/SKILL.md",
+      "depends": [
+        "html"
+      ]
+    },
+    {
+      "name": "grill-me",
+      "suite": "discussion",
+      "summary": "On explicit request, sharpen a plan or design with grilling in the current conversation.",
+      "path": "skills/grill-me/SKILL.md",
+      "depends": [
+        "grilling"
+      ]
+    },
+    {
+      "name": "html",
+      "suite": "base",
+      "summary": "Use when the user asks for a visual explanatory document in HTML about a concept, mechanism, or research finding.",
+      "path": "skills/html/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "impeccable",
+      "suite": "ui-kit",
+      "summary": "Design, critique, audit, and polish frontend interfaces: websites, product UI, components, forms, onboarding, empty states, iOS/Android screens.",
+      "path": "skills/impeccable/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "ponytail-review",
+      "suite": "review",
+      "summary": "Code review focused exclusively on over-engineering.",
+      "path": "skills/ponytail-review/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "show-me",
+      "suite": "base",
+      "summary": "Use when the user asks to see or understand the current topic visually, with concise diagrams, code-shape sketches, and focused HTML artifacts.",
+      "path": "skills/show-me/SKILL.md",
+      "depends": [
+        "html"
+      ]
+    },
+    {
+      "name": "system-design",
+      "suite": "design",
+      "summary": "Design a system from a vague brief to a justified architecture: clarify requirements, estimate scale, lay out components with a C4 Mermaid diagram, weigh trade-",
+      "path": "skills/system-design/SKILL.md",
+      "depends": [
+        "domain-modeling",
+        "grilling"
+      ]
+    },
+    {
+      "name": "ux-spec",
+      "suite": "design",
+      "summary": "Write a UX specification — user journeys, page inventory, state matrix, interaction and copy details — into docs/ux/.",
+      "path": "skills/ux-spec/SKILL.md",
+      "depends": [
+        "domain-modeling",
+        "grilling"
+      ]
+    },
+    {
+      "name": "wait-what",
+      "suite": "base",
+      "summary": "On explicit request, explain an unclear message again in clear Chinese or English without changing the task.",
+      "path": "skills/wait-what/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "api-and-interface-design",
+      "suite": "addy",
+      "summary": "Guides stable API and interface design.",
+      "path": "vendor/addy/skills/api-and-interface-design/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "bmad-ux",
+      "suite": "bmad",
+      "summary": "Capture the user''s UX vision in two documents: DESIGN.md for how the product looks and EXPERIENCE.md for how it behaves.",
+      "path": "vendor/bmad/skills/bmad-ux/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "impeccable",
+      "suite": "impeccable",
+      "summary": "Use when the user wants to design, redesign, shape, critique, audit, polish, simplify, harden, animate, or otherwise improve a frontend interface: websites, lan",
+      "path": "vendor/impeccable/skills/impeccable/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "ask-matt",
+      "suite": "matt",
+      "summary": "Ask which skill or flow fits your situation.",
+      "path": "vendor/matt/skills/engineering/ask-matt/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "code-review",
+      "suite": "matt",
+      "summary": "Review the changes since a fixed point (commit, branch, tag, or merge-base) along two axes: Standards (does the code follow this repo's documented coding standa",
+      "path": "vendor/matt/skills/engineering/code-review/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "codebase-design",
+      "suite": "matt",
+      "summary": "Shared vocabulary for designing deep modules.",
+      "path": "vendor/matt/skills/engineering/codebase-design/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "diagnosing-bugs",
+      "suite": "matt",
+      "summary": "Diagnosis loop for hard bugs and performance regressions.",
+      "path": "vendor/matt/skills/engineering/diagnosing-bugs/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "domain-modeling",
+      "suite": "matt",
+      "summary": "Build and sharpen a project's domain model.",
+      "path": "vendor/matt/skills/engineering/domain-modeling/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "grill-with-docs",
+      "suite": "matt",
+      "summary": "A relentless interview to sharpen a plan or design, which also creates docs (ADR's and glossary) as we go.",
+      "path": "vendor/matt/skills/engineering/grill-with-docs/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "implement",
+      "suite": "matt",
+      "summary": "Implement a piece of work based on a spec or set of tickets.",
+      "path": "vendor/matt/skills/engineering/implement/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "implement-spec",
+      "suite": "matt",
+      "summary": "Implement the result of /to-spec and /to-tickets in code.",
+      "path": "vendor/matt/skills/engineering/implement-spec/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "improve-codebase-architecture",
+      "suite": "matt",
+      "summary": "Scan a codebase for deepening opportunities, present them as a visual HTML report, then grill through whichever one you pick.",
+      "path": "vendor/matt/skills/engineering/improve-codebase-architecture/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "matt-flow",
+      "suite": "matt",
+      "summary": "Flow map for the Matt Pocock skill suite.",
+      "path": "vendor/matt/skills/engineering/matt-flow/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "pr",
+      "suite": "matt",
+      "summary": "Use when writing a PR body.",
+      "path": "vendor/matt/skills/engineering/pr/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "prototype",
+      "suite": "matt",
+      "summary": "Build a throwaway prototype to answer a design question.",
+      "path": "vendor/matt/skills/engineering/prototype/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "research",
+      "suite": "matt",
+      "summary": "Investigate a question against high-trust primary sources and capture the findings as a Markdown file in the repo.",
+      "path": "vendor/matt/skills/engineering/research/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "retro",
+      "suite": "matt",
+      "summary": "Conduct a retrospective on a coding session.",
+      "path": "vendor/matt/skills/engineering/retro/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "setup-matt-pocock-skills",
+      "suite": "matt",
+      "summary": "Configure this repo for the engineering skills: set up its issue tracker, triage label vocabulary, and domain doc layout.",
+      "path": "vendor/matt/skills/engineering/setup-matt-pocock-skills/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "tdd",
+      "suite": "matt",
+      "summary": "Test-driven development.",
+      "path": "vendor/matt/skills/engineering/tdd/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "to-spec",
+      "suite": "matt",
+      "summary": "Turn the current conversation into a spec and publish it to the project issue tracker: no interview, just synthesis of what you've already discussed.",
+      "path": "vendor/matt/skills/engineering/to-spec/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "to-tickets",
+      "suite": "matt",
+      "summary": "Break a plan, spec, or the current conversation into a set of tracer-bullet tickets, each declaring its blocking edges, published to the configured tracker (edg",
+      "path": "vendor/matt/skills/engineering/to-tickets/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "triage",
+      "suite": "matt",
+      "summary": "Move issues and external PRs through a state machine of triage roles, categorise, verify, grill if needed, and write agent-ready briefs.",
+      "path": "vendor/matt/skills/engineering/triage/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "wayfinder",
+      "suite": "matt",
+      "summary": "Plan a huge chunk of work (more than one agent session can hold) as a shared map of decision tickets on your issue tracker, and resolve them one at a time until",
+      "path": "vendor/matt/skills/engineering/wayfinder/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "wizard",
+      "suite": "matt",
+      "summary": "Generate an interactive bash wizard that walks a human through steps only they can perform.",
+      "path": "vendor/matt/skills/engineering/wizard/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "chief-of-staff",
+      "suite": "matt",
+      "summary": "Pursue a long-running goal in a single session by co-ordinating subagents.",
+      "path": "vendor/matt/skills/in-progress/chief-of-staff/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "claude-handoff",
+      "suite": "matt",
+      "summary": "Hand the current conversation off to a fresh background agent that picks up the work immediately.",
+      "path": "vendor/matt/skills/in-progress/claude-handoff/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "loop-me",
+      "suite": "matt",
+      "summary": "Grill me about specs for the workflows I want to build, within this workspace.",
+      "path": "vendor/matt/skills/in-progress/loop-me/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "setup-ts-deep-modules",
+      "suite": "matt",
+      "summary": "Wire dependency-cruiser into a TypeScript repo so each package is a deep module, with implementation hidden in subfolders and reachable only through its entry-p",
+      "path": "vendor/matt/skills/in-progress/setup-ts-deep-modules/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "software-factory",
+      "suite": "matt",
+      "summary": "Shared language for designing a software factory: the tasks it runs and the services it plugs into.",
+      "path": "vendor/matt/skills/in-progress/software-factory/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "writing-beats",
+      "suite": "matt",
+      "summary": "Writing, exploit; assemble raw material into a journey of beats, grounding each term before a beat leans on it.",
+      "path": "vendor/matt/skills/in-progress/writing-beats/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "writing-fragments",
+      "suite": "matt",
+      "summary": "Writing, explore: mine raw fragments, no structure yet.",
+      "path": "vendor/matt/skills/in-progress/writing-fragments/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "writing-shape",
+      "suite": "matt",
+      "summary": "Writing, exploit: shape raw material into an article, paragraph by paragraph.",
+      "path": "vendor/matt/skills/in-progress/writing-shape/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "git-guardrails-claude-code",
+      "suite": "matt",
+      "summary": "Set up Claude Code hooks to block dangerous git commands (push, reset --hard, clean, branch -D, etc.) before they execute.",
+      "path": "vendor/matt/skills/misc/git-guardrails-claude-code/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "migrate-to-shoehorn",
+      "suite": "matt",
+      "summary": "Migrate test files from `as` type assertions to @total-typescript/shoehorn.",
+      "path": "vendor/matt/skills/misc/migrate-to-shoehorn/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "scaffold-exercises",
+      "suite": "matt",
+      "summary": "Create exercise directory structures with sections, problems, solutions, and explainers that pass linting.",
+      "path": "vendor/matt/skills/misc/scaffold-exercises/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "setup-pre-commit",
+      "suite": "matt",
+      "summary": "Set up Husky pre-commit hooks with lint-staged (Prettier), type checking, and tests in the current repo.",
+      "path": "vendor/matt/skills/misc/setup-pre-commit/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "grill-me",
+      "suite": "matt",
+      "summary": "A relentless interview to sharpen a plan or design.",
+      "path": "vendor/matt/skills/productivity/grill-me/SKILL.md",
+      "depends": [
+        "grilling"
+      ]
+    },
+    {
+      "name": "grilling",
+      "suite": "matt",
+      "summary": "Grill the user relentlessly about a plan, decision, or idea.",
+      "path": "vendor/matt/skills/productivity/grilling/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "handoff",
+      "suite": "matt",
+      "summary": "Compact the current conversation into a handoff document for another agent to pick up.",
+      "path": "vendor/matt/skills/productivity/handoff/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "teach",
+      "suite": "matt",
+      "summary": "Teach the user a new skill or concept, within this workspace.",
+      "path": "vendor/matt/skills/productivity/teach/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "to-questionnaire",
+      "suite": "matt",
+      "summary": "Turn a decision you can't fully answer into a questionnaire for someone else to fill in.",
+      "path": "vendor/matt/skills/productivity/to-questionnaire/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "wait-what",
+      "suite": "matt",
+      "summary": "Stop.",
+      "path": "vendor/matt/skills/productivity/wait-what/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "writing-for-agents",
+      "suite": "matt",
+      "summary": "Writing documents for agents.",
+      "path": "vendor/matt/skills/productivity/writing-for-agents/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "reproduce-and-fix-issues",
+      "suite": "pstack",
+      "summary": "Reproduce triaged Slack bugs through a configured app-control adapter, verify existing fixes, and open a bounded draft pull request only after before-and-after ",
+      "path": "vendor/pstack/automations/benny/skills/reproduce-and-fix-issues/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "setup-benny",
+      "suite": "pstack",
+      "summary": "Configure Benny and prepare its triage and repro automations.",
+      "path": "vendor/pstack/automations/benny/skills/setup-benny/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "triage-issue-reports",
+      "suite": "pstack",
+      "summary": "Triage Slack issue reports with one thread-only verdict, evidence review, cause-aware routing, tracker dedupe, and fail-closed ticket creation.",
+      "path": "vendor/pstack/automations/benny/skills/triage-issue-reports/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "architect",
+      "suite": "pstack",
+      "summary": "Sketch types, signatures, and module structure before code, then stay in the loop while implementation fills in.",
+      "path": "vendor/pstack/skills/architect/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "arena",
+      "suite": "pstack",
+      "summary": "Spawn N parallel candidates at the same task, pick a base, graft the strongest parts of the losers into it.",
+      "path": "vendor/pstack/skills/arena/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "automate-me",
+      "suite": "pstack",
+      "summary": "Use for \\\"automate me\\\", \\\"create/update/refresh my -mode skill\\\", \\\"turn/capture my preferences or working style into a skill\\\", or wanting agents to follow ho",
+      "path": "vendor/pstack/skills/automate-me/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "benchmark-checklist",
+      "suite": "pstack",
+      "summary": "Vet a perf measurement (limiter, tuning, limits, errors, repeatability, relevance, and whether the work happened) before you report or act on it.",
+      "path": "vendor/pstack/skills/benchmark-checklist/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "blast-radius",
+      "suite": "pstack",
+      "summary": "Find what a change could break somewhere else before it ships, beyond the diff, and prove the one fact it's safe because of by running real code instead of writ",
+      "path": "vendor/pstack/skills/blast-radius/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "bro",
+      "suite": "pstack",
+      "summary": "Restate the last message in plain human language, with no jargon.",
+      "path": "vendor/pstack/skills/bro/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "correct",
+      "suite": "pstack",
+      "summary": "Find the mistakes agents keep repeating in this repo and make each one impossible.",
+      "path": "vendor/pstack/skills/correct/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "create-formal-verification-skill",
+      "suite": "pstack",
+      "summary": "Generate a project-local skill that formally verifies the code where a bug costs the most and tests reach the least, in any language, with whichever verificatio",
+      "path": "vendor/pstack/skills/create-formal-verification-skill/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "create-verification-skill",
+      "suite": "pstack",
+      "summary": "Generate a project-local verification skill that drives your app the way a user does — any language, framework, or platform.",
+      "path": "vendor/pstack/skills/create-verification-skill/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "figure-it-out",
+      "suite": "pstack",
+      "summary": "Design an auditable playbook when no narrower one fits: a large migration, an ambitious multi-part change, or work a human reviews after stepping away.",
+      "path": "vendor/pstack/skills/figure-it-out/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "how",
+      "suite": "pstack",
+      "summary": "Use for \\\"how does X work\\\", code walkthroughs before changing something, and placement / ownership / layering questions (\\\"where should this live\\\", \\\"which pa",
+      "path": "vendor/pstack/skills/how/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "in-your-own-words",
+      "suite": "pstack",
+      "summary": "Restate in your own words what you think the user's goals are and what problem they're trying to solve.",
+      "path": "vendor/pstack/skills/in-your-own-words/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "interrogate",
+      "suite": "pstack",
+      "summary": "Use for \\\"interrogate\\\", \\\"adversarial review\\\", \\\"multi-model review\\\", \\\"challenge this\\\", \\\"stress test this code\\\", \\\"find blind spots\\\", or \\\"tear this apa",
+      "path": "vendor/pstack/skills/interrogate/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "ketchup",
+      "suite": "pstack",
+      "summary": "Catch the user up on what changed in this chat since their last message, in plain words and small visuals.",
+      "path": "vendor/pstack/skills/ketchup/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "ketchup-video",
+      "suite": "pstack",
+      "summary": "Catch the user up like /ketchup, with a short subtitled video of slides for what happened and the waiting calls as text under it.",
+      "path": "vendor/pstack/skills/ketchup-video/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "maintain-formal-verification-skill",
+      "suite": "pstack",
+      "summary": "Bring a project's formal verification back in line with the code after the code changes: find the commits that touched verified code, update the model, harness,",
+      "path": "vendor/pstack/skills/maintain-formal-verification-skill/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "maintain-verification-skill",
+      "suite": "pstack",
+      "summary": "Periodic pass that keeps a project's verification skill and feature map honest: parallel source readers per feature, one live session driving every feature, at ",
+      "path": "vendor/pstack/skills/maintain-verification-skill/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "make-bot-ui",
+      "suite": "pstack",
+      "summary": "Use when building a custom UI (page, dashboard, buttons) that should wake a Grok Bot over a webhook, when the user must provide a webhook sender key, or when ex",
+      "path": "vendor/pstack/skills/make-bot-ui/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "no-comments",
+      "suite": "pstack",
+      "summary": "Spawn Comment Sicko, fix accepted findings, and offer encodings for claimed constraints.",
+      "path": "vendor/pstack/skills/no-comments/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "poteto-help",
+      "suite": "pstack",
+      "summary": "Guides users through pstack setup, /poteto-mode, and picking the skill, playbook, or principle for a task.",
+      "path": "vendor/pstack/skills/poteto-help/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "poteto-mode",
+      "suite": "pstack",
+      "summary": "poteto's agent style for concise, detailed responses, deliberate subagents, unslopped prose, simple code, and verified work.",
+      "path": "vendor/pstack/skills/poteto-mode/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "principle-attack-the-premise",
+      "suite": "pstack",
+      "summary": "Apply when two or more fixes that share one premise have failed the same gate.",
+      "path": "vendor/pstack/skills/principle-attack-the-premise/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "principle-boundary-discipline",
+      "suite": "pstack",
+      "summary": "Apply when wiring validation, error handling, or framework adapters.",
+      "path": "vendor/pstack/skills/principle-boundary-discipline/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "principle-build-the-lever",
+      "suite": "pstack",
+      "summary": "Apply to any non-trivial work, not just bulk work: edits, migrations, analyses, checks.",
+      "path": "vendor/pstack/skills/principle-build-the-lever/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "principle-encode-lessons-in-structure",
+      "suite": "pstack",
+      "summary": "Apply when you catch yourself writing the same instruction a second time, or notice a recurring correction.",
+      "path": "vendor/pstack/skills/principle-encode-lessons-in-structure/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "principle-exhaust-the-design-space",
+      "suite": "pstack",
+      "summary": "Apply when facing a novel UI interaction or architectural decision with no precedent in the codebase.",
+      "path": "vendor/pstack/skills/principle-exhaust-the-design-space/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "principle-experience-first",
+      "suite": "pstack",
+      "summary": "Apply when product, UX, or feature-scope tradeoffs come up.",
+      "path": "vendor/pstack/skills/principle-experience-first/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "principle-explain-the-number",
+      "suite": "pstack",
+      "summary": "Apply before you measure, and before you trust, report, or act on a number you measured: a speedup, a regression, a throughput, a latency, or an eval result.",
+      "path": "vendor/pstack/skills/principle-explain-the-number/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "principle-fix-root-causes",
+      "suite": "pstack",
+      "summary": "Apply when debugging.",
+      "path": "vendor/pstack/skills/principle-fix-root-causes/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "principle-foundational-thinking",
+      "suite": "pstack",
+      "summary": "Apply before writing logic: choosing core types and data structures, sequencing scaffold-vs-feature work, asking what concurrent actors share.",
+      "path": "vendor/pstack/skills/principle-foundational-thinking/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "principle-guard-the-context-window",
+      "suite": "pstack",
+      "summary": "Apply when context is filling up: large outputs, long files, repeated reads, fan-out planning.",
+      "path": "vendor/pstack/skills/principle-guard-the-context-window/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "principle-laziness-protocol",
+      "suite": "pstack",
+      "summary": "Apply when refactoring, evaluating diff size, or tempted to add abstractions, layers, or signal threading.",
+      "path": "vendor/pstack/skills/principle-laziness-protocol/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "principle-make-operations-idempotent",
+      "suite": "pstack",
+      "summary": "Apply when designing commands, lifecycle steps, or processing loops that run amid crashes, restarts, and retries.",
+      "path": "vendor/pstack/skills/principle-make-operations-idempotent/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "principle-migrate-callers-then-delete-legacy-apis",
+      "suite": "pstack",
+      "summary": "Apply when introducing a new internal API while old callers still exist.",
+      "path": "vendor/pstack/skills/principle-migrate-callers-then-delete-legacy-apis/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "principle-minimize-reader-load",
+      "suite": "pstack",
+      "summary": "Apply when reviewing or shaping code that's hard to trace.",
+      "path": "vendor/pstack/skills/principle-minimize-reader-load/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "principle-model-the-domain",
+      "suite": "pstack",
+      "summary": "Apply when writing stateful logic, or when code branches a lot or repeats a shape assumption across files.",
+      "path": "vendor/pstack/skills/principle-model-the-domain/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "principle-never-block-on-the-human",
+      "suite": "pstack",
+      "summary": "Apply when tempted to ask 'should I do X?' on reversible work.",
+      "path": "vendor/pstack/skills/principle-never-block-on-the-human/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "principle-outcome-oriented-execution",
+      "suite": "pstack",
+      "summary": "Apply during planned rewrites and migrations with explicit phase boundaries.",
+      "path": "vendor/pstack/skills/principle-outcome-oriented-execution/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "principle-prove-it-works",
+      "suite": "pstack",
+      "summary": "Apply after completing a task, before declaring done.",
+      "path": "vendor/pstack/skills/principle-prove-it-works/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "principle-redesign-from-first-principles",
+      "suite": "pstack",
+      "summary": "Apply when integrating a new requirement into an existing design.",
+      "path": "vendor/pstack/skills/principle-redesign-from-first-principles/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "principle-separate-before-serializing-shared-state",
+      "suite": "pstack",
+      "summary": "Apply when concurrent actors might write to the same file, branch, key, or state object.",
+      "path": "vendor/pstack/skills/principle-separate-before-serializing-shared-state/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "principle-sequence-verifiable-units",
+      "suite": "pstack",
+      "summary": "Apply to multi-step work (sweeps, migrations, runs of similar edits) and to how you stack commits and PRs.",
+      "path": "vendor/pstack/skills/principle-sequence-verifiable-units/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "principle-subtract-before-you-add",
+      "suite": "pstack",
+      "summary": "Apply when sequencing an addition, refactor, or rewrite.",
+      "path": "vendor/pstack/skills/principle-subtract-before-you-add/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "principle-test-behavior-not-implementation",
+      "suite": "pstack",
+      "summary": "Apply when you write, change, or keep a test.",
+      "path": "vendor/pstack/skills/principle-test-behavior-not-implementation/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "principle-type-system-discipline",
+      "suite": "pstack",
+      "summary": "Apply when designing types, reviewing a function signature, or writing code in any statically-typed language.",
+      "path": "vendor/pstack/skills/principle-type-system-discipline/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "recall",
+      "suite": "pstack",
+      "summary": "Reconstruct your recent working context from your own chat history, live state, and the shared record (user reports, prior fixes, incidents), then hand back a t",
+      "path": "vendor/pstack/skills/recall/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "reflect",
+      "suite": "pstack",
+      "summary": "Spawn three parallel review subagents over the active transcript, surface learnings, and route each to a concrete edit on an existing skill.",
+      "path": "vendor/pstack/skills/reflect/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "setup-pstack",
+      "suite": "pstack",
+      "summary": "Configure which models pstack uses per role and at what reasoning budget.",
+      "path": "vendor/pstack/skills/setup-pstack/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "sharpen",
+      "suite": "pstack",
+      "summary": "Make a task deeper, not bigger, then rewrite the prompt.",
+      "path": "vendor/pstack/skills/sharpen/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "show-me-your-work",
+      "suite": "pstack",
+      "summary": "Keep a reviewable decision trail for long-running or unattended work: a TSV log with one row per decision (what, why, evidence, result).",
+      "path": "vendor/pstack/skills/show-me-your-work/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "statechart",
+      "suite": "pstack",
+      "summary": "Check a TLA+ model of a system that moves between states, such as a product flow, a protocol, or a service, and draw it as a Mermaid statechart.",
+      "path": "vendor/pstack/skills/statechart/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "swarm",
+      "suite": "pstack",
+      "summary": "Fan out N parallel workers, drain them, and return one report.",
+      "path": "vendor/pstack/skills/swarm/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "tdd",
+      "suite": "pstack",
+      "summary": "Use only when the user explicitly asks for TDD, a failing test, or a regression test, OR when the bug has an obvious cheap local test target.",
+      "path": "vendor/pstack/skills/tdd/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "teach",
+      "suite": "pstack",
+      "summary": "Explain a body of work plainly so a person actually understands it.",
+      "path": "vendor/pstack/skills/teach/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "technical-writing",
+      "suite": "pstack",
+      "summary": "Layered technical-writing standard: Diátaxis structure, Google developer style sentences, STE instruction rules, Global English syntax.",
+      "path": "vendor/pstack/skills/technical-writing/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "typescript-best-practices",
+      "suite": "pstack",
+      "summary": "TypeScript best practices.",
+      "path": "vendor/pstack/skills/typescript-best-practices/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "unslop",
+      "suite": "pstack",
+      "summary": "Cut AI tells from any writing.",
+      "path": "vendor/pstack/skills/unslop/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "why",
+      "suite": "pstack",
+      "summary": "Use for 'why does X work this way', 'why we picked Y', design rationale, regressions, postmortems, or data-backed thresholds.",
+      "path": "vendor/pstack/skills/why/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "architecture-diagram",
+      "suite": "system-design",
+      "summary": "This skill should be used when a system design needs a diagram — \"draw the architecture\", \"diagram this system\", \"show the components\", \"make an architecture/in",
+      "path": "vendor/system-design/skills/architecture-diagram/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "back-of-the-envelope",
+      "suite": "system-design",
+      "summary": "This skill should be used when the user needs to \"estimate QPS\", \"back-of-the-envelope\" (BOTEC) numbers, \"how much storage / bandwidth\", \"how many servers\", \"pe",
+      "path": "vendor/system-design/skills/back-of-the-envelope/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "requirements-scoping",
+      "suite": "system-design",
+      "summary": "This skill should be used when the user needs to \"clarify requirements\", separate \"functional vs non-functional requirements\", \"scope the problem\", figure out \"",
+      "path": "vendor/system-design/skills/requirements-scoping/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "service-decomposition",
+      "suite": "system-design",
+      "summary": "This skill should be used when the user asks \"monolith vs microservices\", how to \"split into services\", set \"service boundaries\", find the right \"service granul",
+      "path": "vendor/system-design/skills/service-decomposition/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "system-design",
+      "suite": "system-design",
+      "summary": "This skill should be used when the user asks to \"design a system\", \"design <a product>\" (e.g.",
+      "path": "vendor/system-design/skills/system-design/SKILL.md",
+      "depends": [
+        "domain-modeling",
+        "grilling"
+      ]
+    }
+  ]
+}

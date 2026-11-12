@@ -1,0 +1,107 @@
+{
+  "version": 1,
+  "suites": {
+    "base": {
+      "title": "Base suite (installed by scripts/install-base)",
+      "skills": [
+        "ask-me",
+        "wait-what",
+        "eli5",
+        "html",
+        "show-me"
+      ]
+    },
+    "discussion": {
+      "title": "Design discussion",
+      "skills": [
+        "grill-me"
+      ]
+    },
+    "review": {
+      "title": "Review and prototyping",
+      "skills": [
+        "ponytail-review"
+      ]
+    },
+    "design": {
+      "title": "Design suite (suites/design.json)",
+      "skills": [
+        "api-and-interface-design",
+        "system-design",
+        "ux-spec"
+      ]
+    },
+    "ui-kit": {
+      "title": "UI kit (suites/ui-kit.json)",
+      "skills": [
+        "impeccable"
+      ]
+    }
+  },
+  "depends": {
+    "eli5": [
+      "html"
+    ],
+    "show-me": [
+      "html"
+    ],
+    "grill-me": [
+      "grilling"
+    ],
+    "system-design": [
+      "domain-modeling",
+      "grilling"
+    ],
+    "ux-spec": [
+      "domain-modeling",
+      "grilling"
+    ]
+  },
+  "retired": {
+    "*": [
+      "adr",
+      "brainstorming",
+      "repo-eval",
+      "service-archive",
+      "work-archive"
+    ],
+    "~/.gemini/skills": [
+      "codebase-design",
+      "diagnosing-bugs",
+      "grill-me",
+      "grill-with-docs",
+      "grilling",
+      "tdd",
+      "teach"
+    ],
+    "~/.codex/skills": [
+      "codex-external-workers"
+    ]
+  },
+  "vendor": {
+    "matt": {
+      "title": "Matt Pocock skills (vendored at vendor/matt, see .sync/upstreams.json)",
+      "note": "Heavier workflow suite; load on demand. matt-flow is the fork's flow map. Buckets: engineering, productivity are promoted; misc, in-progress, deprecated are not."
+    },
+    "pstack": {
+      "title": "pstack (cursor/plugins, vendored whole at vendor/pstack)",
+      "note": "Vendored as one whole plugin (subagents, sibling paths, automations). On Cursor prefer the native plugin; elsewhere the indexed texts read with degraded features."
+    },
+    "impeccable": {
+      "title": "Impeccable (pbakaus/impeccable, vendored at vendor/impeccable)",
+      "note": "Apache-2.0, verbatim upstream incl. NOTICE.md; the adapted copy installed by ui-kit lives at skills/impeccable (see vendor/impeccable/MODIFICATIONS.md)."
+    },
+    "addy": {
+      "title": "Addy Osmani agent-skills (vendored subset at vendor/addy)",
+      "note": "Only api-and-interface-design is vendored; the adapted copy in skills/ inlines its external references and drops cross-skill links."
+    },
+    "system-design": {
+      "title": "proyecto26 system-design-skills (vendored at vendor/system-design)",
+      "note": "Source material for the rewritten skills/system-design; the vendored copy keeps the full plugin for reference."
+    },
+    "bmad": {
+      "title": "BMAD-METHOD (vendored subset at vendor/bmad)",
+      "note": "Only bmad-ux is vendored, as the template source for skills/ux-spec; the BMAD framework itself is not installed."
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "name": "design",
+  "title": "Design suite: clarify, spec, UX spec, system and interface design",
+  "kind": "skills",
+  "includes": ["matt-plan"],
+  "note": "The shared matt-plan sub-suite (clarify/spec/tickets) plus three design members: ux-spec (journeys/pages/states/interactions into docs/ux/), system-design (constraints, capacity, components, trade-offs with C4 Mermaid), api-and-interface-design (external contracts). Pipeline: grill-with-docs -> to-spec -> ux-spec -> system-design -> api-and-interface-design -> to-tickets -> matt-dev's implement.",
+  "members": [
+    {
+      "name": "api-and-interface-design",
+      "path": "skills/api-and-interface-design",
+      "depends": [],
+      "role": "member"
+    },
+    {
+      "name": "system-design",
+      "path": "skills/system-design",
+      "depends": ["domain-modeling", "grilling"],
+      "role": "member"
+    },
+    {
+      "name": "ux-spec",
+      "path": "skills/ux-spec",
+      "depends": ["domain-modeling", "grilling"],
+      "role": "member"
+    }
+  ]
+}

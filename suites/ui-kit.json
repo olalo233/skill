@@ -1,0 +1,20 @@
+{
+  "name": "ui-kit",
+  "title": "UI kit: design taste, prototypes, charts",
+  "kind": "skills",
+  "note": "impeccable is the single source of visual direction (init/document/polish/critique/audit); prototype answers design questions with throwaway code. The impeccable detector CLI (upstream scripts/impeccable) is NOT in this suite -- optional extra, add it manually if wanted. dataviz is pending: its source is unverified, so no member is pinned yet; antvis antv-g2-chart is the fallback candidate once its offline behavior is confirmed.",
+  "members": [
+    {
+      "name": "impeccable",
+      "path": "skills/impeccable",
+      "depends": [],
+      "role": "member"
+    },
+    {
+      "name": "prototype",
+      "path": "vendor/matt/skills/engineering/prototype",
+      "depends": [],
+      "role": "member"
+    }
+  ]
+}

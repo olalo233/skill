@@ -1,0 +1,8 @@
+#!/bin/sh
+# Install the design suite (shared matt-plan sub-suite + ux-spec,
+# system-design, api-and-interface-design) into the current project.
+# Thin wrapper around scripts/install-base; extra flags (e.g. --apply,
+# --update, --force) pass straight through. Dry-run unless --apply is given.
+set -eu
+REPO="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
+exec python3 "$REPO/scripts/install-base" --project --source "$REPO" --ref HEAD --suite design "$@"

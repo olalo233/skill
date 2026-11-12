@@ -1,0 +1,5 @@
+interface:
+  display_name: "ELI5"
+  short_description: "Dead-simple picture explainer"
+policy:
+  allow_implicit_invocation: false
