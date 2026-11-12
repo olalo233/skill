@@ -32,7 +32,11 @@ refuses rather than drop newer edits, and it reports failure honestly
 without marking the backup consumed.
 
 Suites are declared in suites/<name>.json inside the source tree:
-  --project --suite matt-dev      install a suite (member closure listed there)
+  --project --suite matt-dev      install a suite (member closure listed there;
+                                  a suite may `includes` other suite files,
+                                  whose members merge in deduplicated by path
+                                  and are owned in the lock by the final suite)
+
   --project --update --suite X    re-install at --ref; refuses when a member
                                   was edited locally unless --force (edited
                                   copy is moved to the backup dir first)
@@ -330,17 +334,17 @@ def describe(path):
 # ------------------------------------------------------------------ suites
 
 def parse_suite(text, name):
-    """Validate suites/<name>.json text: member paths are safe, the
-    dependency closure is explicitly listed, names match directories."""
+    """Validate one suites/<name>.json: member paths are safe, names match
+    directories, includes are well-formed. Dependency closure is checked by
+    expand_suite once includes are merged in."""
     if not NAME_RE.fullmatch(name):
         raise SystemExit(f'install-base: bad suite name: {name!r}')
     if text is None:
         raise SystemExit(f'install-base: no suite {name!r} in source '
                          f'(looked at suites/{name}.json)')
     suite = json.loads(text)
-    members = suite.get('members', [])
     by_name = {}
-    for m in members:
+    for m in suite.get('members', []):
         rel = PurePosixPath(m['path'])
         if not NAME_RE.fullmatch(m['name']) or rel.is_absolute() or '..' in rel.parts:
             raise SystemExit(f'install-base: unsafe member in suite {name}: {m}')
@@ -350,23 +354,63 @@ def parse_suite(text, name):
             raise SystemExit(f"install-base: suite {name}: member {m['name']} must live in a "
                              f'same-named directory ({m["path"]})')
         by_name[m['name']] = m
-    for m in members:
+    for inc in suite.get('includes', []):
+        if not NAME_RE.fullmatch(inc):
+            raise SystemExit(f'install-base: bad included suite name in {name}: {inc!r}')
+        if inc == name:
+            raise SystemExit(f'install-base: suite {name} includes itself')
+    return suite
+
+
+def expand_suite(load, name, stack=()):
+    """Resolve a suite's `includes` into one ordered member list.
+
+    `load` maps a suite name to its suites/<name>.json text (None if absent).
+    Included suites contribute their members first; members are deduplicated
+    by repository path, which pins the content digest inside one commit. The
+    same member name at two different paths is a hard error. Every depends
+    entry must be an explicit member of the suite or of an included suite.
+    Returns (top-level suite object, members in dependency order).
+    """
+    if name in stack:
+        raise SystemExit('install-base: suite include cycle: '
+                         + ' -> '.join(stack + (name,)))
+    suite = parse_suite(load(name), name)
+    members, order = {}, []
+    for inc in suite.get('includes', []):
+        for m in expand_suite(load, inc, stack + (name,))[1]:
+            if m['name'] in members and members[m['name']]['path'] != m['path']:
+                raise SystemExit(
+                    f"install-base: suite {name}: member {m['name']!r} at both "
+                    f"{members[m['name']]['path']} and {m['path']}")
+            if m['name'] not in members:
+                members[m['name']] = m
+                order.append(m)
+    for m in suite.get('members', []):
+        if m['name'] in members and members[m['name']]['path'] != m['path']:
+            raise SystemExit(
+                f"install-base: suite {name}: member {m['name']!r} at both "
+                f"{members[m['name']]['path']} and {m['path']}")
+        if m['name'] not in members:
+            members[m['name']] = m
+            order.append(m)
+    for m in order:
         for dep in m.get('depends', []):
-            if dep not in by_name:
+            if dep not in members:
                 raise SystemExit(
                     f"install-base: suite {name}: {m['name']} depends on {dep!r}, "
-                    'which is not an explicit member of the suite file')
+                    'which is not a member of the suite or its includes')
     ordered, seen = [], set()
 
     def visit(m):
         if m['name'] in seen:
             return
         for dep in m.get('depends', []):
-            visit(by_name[dep])
+            visit(members[dep])
         seen.add(m['name'])
         ordered.append(m)
 
-    for m in members:
+    for m in order:
         visit(m)
     return suite, ordered
 
@@ -1011,8 +1055,8 @@ def main():
     repo_map = load_repo_map(git_show(source, sha, '.sync/upstreams.json'))
 
     if args.suite:
-        suite, members = parse_suite(git_show(source, sha, f'suites/{args.suite}.json'),
-                                     args.suite)
+        suite, members = expand_suite(
+            lambda n: git_show(source, sha, f'suites/{n}.json'), args.suite)
         names = [m['name'] for m in members]
     else:
         entries = closure(resolve_selectors(args.skill or base, skills), skills)

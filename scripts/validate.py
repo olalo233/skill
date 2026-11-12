@@ -38,8 +38,13 @@ for name, path in skills.items():
     if not re.search(r'^name: ["\']?' + re.escape(name) + r'["\']?\s*$', frontmatter, re.M):
         errors.append(f'{name}: frontmatter name mismatch')
     if not re.search(r'^description: .+', frontmatter, re.M): errors.append(f'{name}: missing description')
-for name, dependency in [('show-me','html'),('eli5','html'),('grill-me','grilling')]:
-    if name in skills and dependency not in skills: errors.append(f'{name}: missing dependency {dependency}')
+vendored = {p.parent.name for p in ROOT.glob('vendor/**/SKILL.md')}
+available = set(skills) | vendored
+for name, dependency in [('show-me','html'),('eli5','html'),('grill-me','grilling'),
+                         ('ux-spec','grilling'),('ux-spec','domain-modeling'),
+                         ('system-design','grilling'),('system-design','domain-modeling')]:
+    if name in available and dependency not in available:
+        errors.append(f'{name}: missing dependency {dependency}')
 
 manifest = json.loads((ROOT / '.sync/upstreams.json').read_text())
 covered = set(manifest.get('local_skills', []))

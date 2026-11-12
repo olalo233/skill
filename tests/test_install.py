@@ -450,6 +450,93 @@ class SuiteTests(unittest.TestCase):
                                       cwd=proj)
             self.assertNotEqual(result.returncode, 0)  # nothing owned -> error
 
+    def test_suite_includes_expand_into_final_suite(self):
+        """A suite may `includes` a sub-suite; members merge in deduplicated
+        and the lock's required_by records the final suite name only."""
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp).resolve()
+            skills = [('x', 'skills/x'), ('y', 'skills/y'), ('z', 'skills/z')]
+            suites = {
+                'sub': suite([('x', 'skills/x', []), ('y', 'skills/y', [])]),
+                'one': {**suite([('z', 'skills/z', [])]), 'includes': ['sub']},
+            }
+            src, head = make_clone(base, skills=skills, suites=suites)
+            proj = base / 'proj'
+            proj.mkdir()
+            result = self.run_install('--apply', '--project', '--source', str(src),
+                                      '--ref', head, '--suite', 'one', cwd=proj)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            lock = json.loads((proj / '.skills-lock.json').read_text())
+            self.assertEqual(set(lock['skills']), {'x', 'y', 'z'})
+            for name in ('x', 'y', 'z'):
+                self.assertEqual(lock['skills'][name]['required_by'], ['one'])
+
+    def test_includes_shared_member_lands_once_and_survives_uninstall(self):
+        """design+matt-dev pattern: two suites including the same sub-suite
+        install each shared member once; uninstalling either keeps them."""
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp).resolve()
+            skills = [('x', 'skills/x'), ('y', 'skills/y'), ('z', 'skills/z')]
+            suites = {
+                'sub': suite([('x', 'skills/x', [])]),
+                'one': {**suite([('y', 'skills/y', [])]), 'includes': ['sub']},
+                'two': {**suite([('z', 'skills/z', [])]), 'includes': ['sub']},
+            }
+            src, head = make_clone(base, skills=skills, suites=suites)
+            proj = base / 'proj'
+            proj.mkdir()
+            for s in ('one', 'two'):
+                self.assertEqual(self.run_install(
+                    '--apply', '--project', '--source', str(src),
+                    '--ref', head, '--suite', s, cwd=proj).returncode, 0)
+            lock = json.loads((proj / '.skills-lock.json').read_text())
+            self.assertEqual(lock['skills']['x']['required_by'], ['one', 'two'])
+            # exactly one payload copy on disk
+            self.assertEqual(len(list(proj.glob('.agents/skills/x/SKILL.md'))), 1)
+            result = self.run_install('--apply', '--project', '--uninstall',
+                                      'one', cwd=proj)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertFalse((proj / '.agents/skills/y').exists())
+            self.assertTrue((proj / '.agents/skills/x').is_dir())  # shared, kept
+            lock = json.loads((proj / '.skills-lock.json').read_text())
+            self.assertEqual(lock['skills']['x']['required_by'], ['two'])
+
+    def test_include_cycle_and_missing_include_error(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp).resolve()
+            suites = {
+                'a': {**suite([]), 'includes': ['b']},
+                'b': {**suite([]), 'includes': ['a']},
+                'c': {**suite([]), 'includes': ['nope']},
+            }
+            src, head = make_clone(base, suites=suites)
+            proj = base / 'proj'
+            proj.mkdir()
+            result = self.run_install('--apply', '--project', '--source', str(src),
+                                      '--ref', head, '--suite', 'a', cwd=proj)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('cycle', result.stderr)
+            result = self.run_install('--apply', '--project', '--source', str(src),
+                                      '--ref', head, '--suite', 'c', cwd=proj)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('no suite', result.stderr)
+
+    def test_same_member_name_at_two_paths_errors(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp).resolve()
+            skills = [('x', 'skills/x'), ('x', 'vendor/v/x')]
+            suites = {
+                'sub': suite([('x', 'vendor/v/x', [])]),
+                'one': {**suite([('x', 'skills/x', [])]), 'includes': ['sub']},
+            }
+            src, head = make_clone(base, skills=skills, suites=suites)
+            proj = base / 'proj'
+            proj.mkdir()
+            result = self.run_install('--apply', '--project', '--source', str(src),
+                                      '--ref', head, '--suite', 'one', cwd=proj)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('both', result.stderr)
+
     def test_update_replaces_clean_and_protects_local_edits(self):
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp).resolve()

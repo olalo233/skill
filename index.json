@@ -3,6 +3,13 @@
   "generated_by": "scripts/build_index.py",
   "skills": [
     {
+      "name": "api-and-interface-design",
+      "suite": "design",
+      "summary": "Guides stable API and interface design.",
+      "path": "skills/api-and-interface-design/SKILL.md",
+      "depends": []
+    },
+    {
       "name": "ask-me",
       "suite": "base",
       "summary": "Use when the user asks which skill fits a task, or invokes /ask-me to pick and load a skill from this repository's index.",
@@ -28,13 +35,6 @@
       ]
     },
     {
-      "name": "grilling",
-      "suite": "discussion",
-      "summary": "Grill the user relentlessly about a plan, decision, or idea.",
-      "path": "skills/grilling/SKILL.md",
-      "depends": []
-    },
-    {
       "name": "html",
       "suite": "base",
       "summary": "Use when the user asks for a visual explanatory document in HTML about a concept, mechanism, or research finding.",
@@ -42,17 +42,17 @@
       "depends": []
     },
     {
+      "name": "impeccable",
+      "suite": "ui-kit",
+      "summary": "Design, critique, audit, and polish frontend interfaces: websites, product UI, components, forms, onboarding, empty states, iOS/Android screens.",
+      "path": "skills/impeccable/SKILL.md",
+      "depends": []
+    },
+    {
       "name": "ponytail-review",
       "suite": "review",
       "summary": "Code review focused exclusively on over-engineering.",
       "path": "skills/ponytail-review/SKILL.md",
-      "depends": []
-    },
-    {
-      "name": "prototype",
-      "suite": "review",
-      "summary": "Build a throwaway prototype to answer a design question.",
-      "path": "skills/prototype/SKILL.md",
       "depends": []
     },
     {
@@ -65,10 +65,51 @@
       ]
     },
     {
+      "name": "system-design",
+      "suite": "design",
+      "summary": "Design a system from a vague brief to a justified architecture: clarify requirements, estimate scale, lay out components with a C4 Mermaid diagram, weigh trade-",
+      "path": "skills/system-design/SKILL.md",
+      "depends": [
+        "domain-modeling",
+        "grilling"
+      ]
+    },
+    {
+      "name": "ux-spec",
+      "suite": "design",
+      "summary": "Write a UX specification — user journeys, page inventory, state matrix, interaction and copy details — into docs/ux/.",
+      "path": "skills/ux-spec/SKILL.md",
+      "depends": [
+        "domain-modeling",
+        "grilling"
+      ]
+    },
+    {
       "name": "wait-what",
       "suite": "base",
       "summary": "On explicit request, explain an unclear message again in clear Chinese or English without changing the task.",
       "path": "skills/wait-what/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "api-and-interface-design",
+      "suite": "addy",
+      "summary": "Guides stable API and interface design.",
+      "path": "vendor/addy/skills/api-and-interface-design/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "bmad-ux",
+      "suite": "bmad",
+      "summary": "Capture the user''s UX vision in two documents: DESIGN.md for how the product looks and EXPERIENCE.md for how it behaves.",
+      "path": "vendor/bmad/skills/bmad-ux/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "impeccable",
+      "suite": "impeccable",
+      "summary": "Use when the user wants to design, redesign, shape, critique, audit, polish, simplify, harden, animate, or otherwise improve a frontend interface: websites, lan",
+      "path": "vendor/impeccable/skills/impeccable/SKILL.md",
       "depends": []
     },
     {
@@ -779,6 +820,44 @@
       "summary": "Use for 'why does X work this way', 'why we picked Y', design rationale, regressions, postmortems, or data-backed thresholds.",
       "path": "vendor/pstack/skills/why/SKILL.md",
       "depends": []
+    },
+    {
+      "name": "architecture-diagram",
+      "suite": "system-design",
+      "summary": "This skill should be used when a system design needs a diagram — \"draw the architecture\", \"diagram this system\", \"show the components\", \"make an architecture/in",
+      "path": "vendor/system-design/skills/architecture-diagram/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "back-of-the-envelope",
+      "suite": "system-design",
+      "summary": "This skill should be used when the user needs to \"estimate QPS\", \"back-of-the-envelope\" (BOTEC) numbers, \"how much storage / bandwidth\", \"how many servers\", \"pe",
+      "path": "vendor/system-design/skills/back-of-the-envelope/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "requirements-scoping",
+      "suite": "system-design",
+      "summary": "This skill should be used when the user needs to \"clarify requirements\", separate \"functional vs non-functional requirements\", \"scope the problem\", figure out \"",
+      "path": "vendor/system-design/skills/requirements-scoping/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "service-decomposition",
+      "suite": "system-design",
+      "summary": "This skill should be used when the user asks \"monolith vs microservices\", how to \"split into services\", set \"service boundaries\", find the right \"service granul",
+      "path": "vendor/system-design/skills/service-decomposition/SKILL.md",
+      "depends": []
+    },
+    {
+      "name": "system-design",
+      "suite": "system-design",
+      "summary": "This skill should be used when the user asks to \"design a system\", \"design <a product>\" (e.g.",
+      "path": "vendor/system-design/skills/system-design/SKILL.md",
+      "depends": [
+        "domain-modeling",
+        "grilling"
+      ]
     }
   ]
 }

@@ -18,16 +18,16 @@ This suite assembles upstream work. Local adaptations are explicit below; do not
 
 - Repository: `mattpocock/skills`
 - Current merge baseline: `.sync/upstreams.json`.
-- Unmodified skill bodies:
-  - `skills/productivity/grilling/`
-  - `skills/engineering/prototype/`
+- Copied skills (`grilling` and `prototype` are now used verbatim from the
+  vendored mirror, so only adapted copies remain here):
 - Added entry: `skills/productivity/grill-me/SKILL.md`.
   - Local adaptation: retain delegation to grilling; add a read-based invocation for runtimes without a Skill tool, a bounded decision scope, and same-parent-conversation GSD continuation only when explicitly requested. No scheduler or new state files.
 - Added adaptation: `skills/productivity/wait-what/SKILL.md`.
   - Local changes: choose Chinese/English from the user's explicit request or conversation; bilingual only on request; replace the English-only ASD-STE100 instruction with natural clear language; preserve identifiers, uncertainty, and accepted scope; use existing context without requiring a new glossary; explanation does not authorize implementation.
-- Host metadata: `agents/openai.yaml` for grill-me, grilling, and wait-what disables implicit Codex invocation. The upstream grilling body itself is unchanged.
-- Invocation frontmatter: `triggers: [user]` (Devin) added to grill-me and grilling; `disable-model-invocation: true` added to grilling to match its existing `agents/openai.yaml` user-invoked policy.
+- Host metadata: `agents/openai.yaml` for grill-me and wait-what disables implicit Codex invocation.
+- Invocation frontmatter: `triggers: [user]` (Devin) and `disable-model-invocation: true` added to grill-me only. The vendored `grilling` keeps upstream's invocable policy on purpose: `grill-with-docs` calls it through the Skill tool.
 - Vendored mirror: `skills/`, `README.md`, and `LICENSE` land at `vendor/matt/` under the same baseline (`vendor_paths` in `.sync/upstreams.json`; the weekly three-way merge consumes them too — vendor destinations are confined to `vendor/` — so the mirror tracks the same revision as the promoted skills).
+- Name convergence: the former adapted `skills/grilling` and `skills/prototype` copies were removed; suites and `--skill` bare-name selectors now resolve those names to `vendor/matt/skills/productivity/grilling` and `vendor/matt/skills/engineering/prototype`.
 - Local addition: `vendor/matt/skills/engineering/matt-flow/` is the olalo233/mattpocock-skills fork's `ask-me` flow map, renamed to avoid colliding with `skills/ask-me`. It is fork content, not upstream; the merge leaves it alone because it is absent from the upstream snapshot.
 - License: MIT, preserved under `licenses/mattpocock-skills-MIT.txt` and `vendor/matt/LICENSE`.
 
@@ -55,10 +55,34 @@ Only the narrow review skill is bundled. The always-on Ponytail skill is not inc
 - Recorded revision: `2eaf46574b25cdf7ef8c849837099b866b7438ce` in `.sync/upstreams.json` (`vendor_seeded: true`); vendored whole at `vendor/pstack/` and indexed as one suite — on Cursor prefer the native plugin, elsewhere the text reads with degraded features.
 - License file seeded into `licenses/cursor-plugins-pstack-MIT.txt` from the local 246bc508 plugin cache; assumed unchanged at 2eaf4657 — **unverified**.
 
+### Impeccable
+
+- Repository: `pbakaus/impeccable`; upstream path `.agents/skills/impeccable`.
+- Vendored verbatim at `vendor/impeccable/` (LICENSE and NOTICE.md kept; local-changes ledger at `vendor/impeccable/MODIFICATIONS.md` per Apache-2.0).
+- Adapted copy synced to `skills/impeccable/` (`paths` in `.sync/upstreams.json`; three-way merge preserves the adaptation): manual trigger only, no `scripts/` detector CLI or live-browser helpers (optional extra), `live`/`generate`/Pin-Unpin/Hooks/Doctor dropped, `critique` compares against a Kimi export item by item when one exists.
+- License: Apache-2.0, preserved in `licenses/impeccable-Apache-2.0.txt` and `vendor/impeccable/LICENSE`.
+
+### Addy Osmani agent-skills
+
+- Repository: `addyosmani/agent-skills`; only `skills/api-and-interface-design` is taken.
+- Vendored verbatim at `vendor/addy/`; adapted copy synced to `skills/api-and-interface-design/`: description notes the boundary with `codebase-design`, and the pointer to the sibling `deprecation-and-migration` skill is inlined since the rest of the Addy collection is not vendored.
+- License: MIT, preserved in `licenses/addyosmani-agent-skills-MIT.txt` and `vendor/addy/LICENSE`.
+
+### Proyecto 26 system-design-skills
+
+- Repository: `proyecto26/system-design-skills`; five skills vendored verbatim at `vendor/system-design/` as reference material.
+- `skills/system-design/` is a local rewrite (reasoning loop, C4-in-Mermaid diagrams, estimation and diagramming references one layer deep), credited to the MIT source inside the file; it sits in `local_skills`, not in a sync path.
+- License: MIT, preserved in `licenses/proyecto26-system-design-skills-MIT.txt` and `vendor/system-design/LICENSE`.
+
+### BMAD-METHOD
+
+- Repository: `bmad-code-org/BMAD-METHOD`; only `skills/bmad-ux` is vendored at `vendor/bmad/` as the template source for `skills/ux-spec` (a local skill credited MIT inside the file). The BMAD framework itself is not installed.
+- License: MIT, preserved in `licenses/bmad-method-MIT.txt` and `vendor/bmad/LICENSE`.
+
 ## Base suite and invocation policy
 
 - `skills/ask-me/` is a local skill: index router that recommends, then waits. User-invoked only.
-- User-invoked skills carry all three configs: `disable-model-invocation: true` (Claude Code frontmatter, also read by Cursor per the shared skills spec — **unverified for Cursor**), `triggers: [user]` (Devin, per CLI docs), and `agents/openai.yaml` `policy.allow_implicit_invocation: false` (Codex). Applied to `ask-me`, `wait-what`, `eli5`; `grill-me` and `grilling` aligned to the same policy.
+- User-invoked skills carry all three configs: `disable-model-invocation: true` (Claude Code frontmatter, also read by Cursor per the shared skills spec — **unverified for Cursor**), `triggers: [user]` (Devin, per CLI docs), and `agents/openai.yaml` `policy.allow_implicit_invocation: false` (Codex). Applied to `ask-me`, `wait-what`, `eli5`, `grill-me`, and the manual design/ui-kit members `ux-spec`, `system-design`, `impeccable`.
 - `html` and `show-me` stay model-invocable; descriptions rewritten as passive conditional sentences (`Use when the user asks for …`). `html` gained an explicit `agents/openai.yaml` with `allow_implicit_invocation: true`.
 - `wait-what` merged the divergent `~/.agents/skills` variant: consult `CONTEXT.md`/`CONTEXT-MAP.md` when present, and rephrase rather than repeat verbatim. The older `~/.claude` STE100 variant contributed nothing new.
 - `INDEX.md` and `index.json` are generated by `scripts/build_index.py` from `skills/` and `vendor/`; suite membership, dependencies, and per-directory retired lists live in `.sync/index-source.json`. `scripts/install-base` installs the base suite from a pinned clean clone (`--source`, required `--ref`; dry-run by default). All changes — retired entries, replaced installs, root index files — are recorded in one manifest inside a single backup directory before apply, a failure restores from it, and `--rollback <backup-dir>` replays the restore. Retirement runs only for user-level installs; `--project` copies and never moves anything.

@@ -19,14 +19,50 @@ present as sibling directories; they do not need to be read.
 | Skill | Summary | Path | Depends |
 | --- | --- | --- | --- |
 | `grill-me` | On explicit request, sharpen a plan or design with grilling in the current conversation. | `skills/grill-me/SKILL.md` | grilling |
-| `grilling` | Grill the user relentlessly about a plan, decision, or idea. | `skills/grilling/SKILL.md` |  |
 
 ## Review and prototyping
 
 | Skill | Summary | Path | Depends |
 | --- | --- | --- | --- |
 | `ponytail-review` | Code review focused exclusively on over-engineering. | `skills/ponytail-review/SKILL.md` |  |
-| `prototype` | Build a throwaway prototype to answer a design question. | `skills/prototype/SKILL.md` |  |
+
+## Design suite (suites/design.json)
+
+| Skill | Summary | Path | Depends |
+| --- | --- | --- | --- |
+| `api-and-interface-design` | Guides stable API and interface design. | `skills/api-and-interface-design/SKILL.md` |  |
+| `system-design` | Design a system from a vague brief to a justified architecture: clarify requirements, estimate scale, lay out components with a C4 Mermaid diagram, weigh trade- | `skills/system-design/SKILL.md` | domain-modeling, grilling |
+| `ux-spec` | Write a UX specification — user journeys, page inventory, state matrix, interaction and copy details — into docs/ux/. | `skills/ux-spec/SKILL.md` | domain-modeling, grilling |
+
+## UI kit (suites/ui-kit.json)
+
+| Skill | Summary | Path | Depends |
+| --- | --- | --- | --- |
+| `impeccable` | Design, critique, audit, and polish frontend interfaces: websites, product UI, components, forms, onboarding, empty states, iOS/Android screens. | `skills/impeccable/SKILL.md` |  |
+
+## Addy Osmani agent-skills (vendored subset at vendor/addy)
+
+Only api-and-interface-design is vendored; the adapted copy in skills/ inlines its external references and drops cross-skill links.
+
+| Skill | Summary | Path | Depends |
+| --- | --- | --- | --- |
+| `api-and-interface-design` | Guides stable API and interface design. | `vendor/addy/skills/api-and-interface-design/SKILL.md` |  |
+
+## BMAD-METHOD (vendored subset at vendor/bmad)
+
+Only bmad-ux is vendored, as the template source for skills/ux-spec; the BMAD framework itself is not installed.
+
+| Skill | Summary | Path | Depends |
+| --- | --- | --- | --- |
+| `bmad-ux` | Capture the user''s UX vision in two documents: DESIGN.md for how the product looks and EXPERIENCE.md for how it behaves. | `vendor/bmad/skills/bmad-ux/SKILL.md` |  |
+
+## Impeccable (pbakaus/impeccable, vendored at vendor/impeccable)
+
+Apache-2.0, verbatim upstream incl. NOTICE.md; the adapted copy installed by ui-kit lives at skills/impeccable (see vendor/impeccable/MODIFICATIONS.md).
+
+| Skill | Summary | Path | Depends |
+| --- | --- | --- | --- |
+| `impeccable` | Use when the user wants to design, redesign, shape, critique, audit, polish, simplify, harden, animate, or otherwise improve a frontend interface: websites, lan | `vendor/impeccable/skills/impeccable/SKILL.md` |  |
 
 ## Matt Pocock skills (vendored at vendor/matt, see .sync/upstreams.json)
 
@@ -142,3 +178,15 @@ Vendored as one whole plugin (subagents, sibling paths, automations). On Cursor 
 | `typescript-best-practices` | TypeScript best practices. | `vendor/pstack/skills/typescript-best-practices/SKILL.md` |  |
 | `unslop` | Cut AI tells from any writing. | `vendor/pstack/skills/unslop/SKILL.md` |  |
 | `why` | Use for 'why does X work this way', 'why we picked Y', design rationale, regressions, postmortems, or data-backed thresholds. | `vendor/pstack/skills/why/SKILL.md` |  |
+
+## proyecto26 system-design-skills (vendored at vendor/system-design)
+
+Source material for the rewritten skills/system-design; the vendored copy keeps the full plugin for reference.
+
+| Skill | Summary | Path | Depends |
+| --- | --- | --- | --- |
+| `architecture-diagram` | This skill should be used when a system design needs a diagram — "draw the architecture", "diagram this system", "show the components", "make an architecture/in | `vendor/system-design/skills/architecture-diagram/SKILL.md` |  |
+| `back-of-the-envelope` | This skill should be used when the user needs to "estimate QPS", "back-of-the-envelope" (BOTEC) numbers, "how much storage / bandwidth", "how many servers", "pe | `vendor/system-design/skills/back-of-the-envelope/SKILL.md` |  |
+| `requirements-scoping` | This skill should be used when the user needs to "clarify requirements", separate "functional vs non-functional requirements", "scope the problem", figure out " | `vendor/system-design/skills/requirements-scoping/SKILL.md` |  |
+| `service-decomposition` | This skill should be used when the user asks "monolith vs microservices", how to "split into services", set "service boundaries", find the right "service granul | `vendor/system-design/skills/service-decomposition/SKILL.md` |  |
+| `system-design` | This skill should be used when the user asks to "design a system", "design <a product>" (e.g. | `vendor/system-design/skills/system-design/SKILL.md` | domain-modeling, grilling |

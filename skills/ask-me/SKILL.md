@@ -25,8 +25,15 @@ Route to skills through this repository's index. Recommend only; never install o
    It copies the skill and its dependencies into `.agents/skills/` and links them from `.claude/skills/`. For a declared suite use `--suite "<name>"` instead of `--skill` (or the `bin/install-<suite>` wrappers). When a bare name is ambiguous across sources (e.g. `tdd` exists in both matt and pstack), use the full repository path shown by `--list`.
 6. **"Uninstall / update a suite"**: `python3 "<repo>/scripts/install-base" --apply --project --uninstall "<suite>"` removes only skills no other owner needs; `--update --suite "<suite>" --ref "<commit>"` refreshes a suite and refuses to clobber local edits unless `--force` is given (edited copies are moved into the backup dir first).
 
+## Which suite for what task
+
+- `design` — turning a vague idea into decided work: clarify (grill-with-docs), spec (to-spec), UX spec into docs/ux/ (ux-spec), system design (system-design), interface contracts (api-and-interface-design), tickets (to-tickets). Includes the `matt-plan` sub-suite; install with `bin/install-design`.
+- `matt-dev` — implementing the tickets: implement, tdd, code-review, diagnosing-bugs, matt-flow. Includes `matt-plan`, so members shared with `design` land only once and survive either suite's uninstall; install with `bin/install-matt-dev`.
+- `matt-plan` — the shared planning half alone (clarify/spec/tickets and their primitives). Rarely the right choice on its own; prefer `design` or `matt-dev`.
+- `ui-kit` — visual direction and prototypes: impeccable (PRODUCT.md/DESIGN.md, critique/audit; the detector CLI is an optional extra) and prototype. dataviz is pending source verification. Install with `bin/install-ui-kit`.
+- `pstack` — a Cursor-native plugin vendored whole (subagents, sibling paths, automations). On Cursor, recommend enabling the native plugin rather than reading the vendored copy. Elsewhere the text still reads, but features degrade; say so when recommending.
+
 ## Notes
 
 - `matt` and `pstack` suites live under `vendor/`; index paths point there.
-- pstack is a Cursor-native plugin (subagents, sibling paths, automations). On Cursor, recommend enabling the native plugin rather than reading the vendored copy. Elsewhere the text still reads, but features degrade; say so when recommending.
 - A skill that is not vendored yet appears in the index only once its files exist.

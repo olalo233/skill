@@ -1,7 +1,9 @@
 {
   "version": 1,
   "local_skills": [
-    "ask-me"
+    "ask-me",
+    "system-design",
+    "ux-spec"
   ],
   "sources": [
     {
@@ -58,16 +60,8 @@
           "destination": "skills/grill-me"
         },
         {
-          "source": "skills/productivity/grilling",
-          "destination": "skills/grilling"
-        },
-        {
           "source": "skills/productivity/wait-what",
           "destination": "skills/wait-what"
-        },
-        {
-          "source": "skills/engineering/prototype",
-          "destination": "skills/prototype"
         },
         {
           "source": "LICENSE",
@@ -121,6 +115,126 @@
           "destination": "licenses/ponytail-MIT.txt"
         }
       ],
+      "ref": "main"
+    },
+    {
+      "repo": "pbakaus/impeccable",
+      "revision": "b4bff1626c344067788c2679f048a20057c7cc5a",
+      "license": "Apache-2.0",
+      "paths": [
+        {
+          "source": ".agents/skills/impeccable",
+          "destination": "skills/impeccable"
+        },
+        {
+          "source": "LICENSE",
+          "destination": "licenses/impeccable-Apache-2.0.txt"
+        }
+      ],
+      "vendor_paths": [
+        {
+          "source": ".agents/skills/impeccable",
+          "destination": "vendor/impeccable/skills/impeccable"
+        },
+        {
+          "source": "LICENSE",
+          "destination": "vendor/impeccable/LICENSE"
+        },
+        {
+          "source": "NOTICE.md",
+          "destination": "vendor/impeccable/NOTICE.md"
+        }
+      ],
+      "vendor_seeded": true,
+      "ref": "main"
+    },
+    {
+      "repo": "addyosmani/agent-skills",
+      "revision": "301b02b12bff98e4688e6984af6556802322bbde",
+      "license": "MIT",
+      "paths": [
+        {
+          "source": "skills/api-and-interface-design",
+          "destination": "skills/api-and-interface-design"
+        },
+        {
+          "source": "LICENSE",
+          "destination": "licenses/addyosmani-agent-skills-MIT.txt"
+        }
+      ],
+      "vendor_paths": [
+        {
+          "source": "skills/api-and-interface-design",
+          "destination": "vendor/addy/skills/api-and-interface-design"
+        },
+        {
+          "source": "LICENSE",
+          "destination": "vendor/addy/LICENSE"
+        }
+      ],
+      "vendor_seeded": true,
+      "ref": "main"
+    },
+    {
+      "repo": "proyecto26/system-design-skills",
+      "revision": "228d57dc6fa7627a6426553fdd6ad0040e36f361",
+      "license": "MIT",
+      "paths": [
+        {
+          "source": "LICENSE",
+          "destination": "licenses/proyecto26-system-design-skills-MIT.txt"
+        }
+      ],
+      "vendor_paths": [
+        {
+          "source": "skills/system-design",
+          "destination": "vendor/system-design/skills/system-design"
+        },
+        {
+          "source": "skills/architecture-diagram",
+          "destination": "vendor/system-design/skills/architecture-diagram"
+        },
+        {
+          "source": "skills/requirements-scoping",
+          "destination": "vendor/system-design/skills/requirements-scoping"
+        },
+        {
+          "source": "skills/back-of-the-envelope",
+          "destination": "vendor/system-design/skills/back-of-the-envelope"
+        },
+        {
+          "source": "skills/service-decomposition",
+          "destination": "vendor/system-design/skills/service-decomposition"
+        },
+        {
+          "source": "LICENSE",
+          "destination": "vendor/system-design/LICENSE"
+        }
+      ],
+      "vendor_seeded": true,
+      "ref": "main"
+    },
+    {
+      "repo": "bmad-code-org/BMAD-METHOD",
+      "revision": "a867e1604b365d48ea03cbd109da1066ba0c84bc",
+      "license": "MIT",
+      "paths": [
+        {
+          "source": "LICENSE",
+          "destination": "licenses/bmad-method-MIT.txt"
+        }
+      ],
+      "vendor_paths": [
+        {
+          "source": "skills/bmad-ux",
+          "destination": "vendor/bmad/skills/bmad-ux"
+        },
+        {
+          "source": "LICENSE",
+          "destination": "vendor/bmad/LICENSE"
+        }
+      ],
+      "vendor_seeded": true,
       "ref": "main"
     }
   ]
