@@ -113,6 +113,21 @@ def build(root):
     return render_md(entries, src), render_json(entries)
 
 
+def pending_vendor(root):
+    """Vendor sources whose vendoring state and files disagree."""
+    manifest = json.loads((root / '.sync/upstreams.json').read_text())
+    unseeded, missing = [], []
+    for source in manifest['sources']:
+        vendor = source.get('vendor_paths')
+        if not vendor:
+            continue
+        if source.get('vendor_seeded') is False:
+            unseeded.append(source['repo'])
+        elif source.get('vendor_seeded'):
+            missing += [m['destination'] for m in vendor if not (root / m['destination']).exists()]
+    return unseeded, missing
+
+
 if __name__ == '__main__':
     check = '--check' in sys.argv
     md, js = build(ROOT)
@@ -120,8 +135,15 @@ if __name__ == '__main__':
     if check:
         stale = [str(p.relative_to(ROOT)) for p, want in
                  ((md_path, md), (js_path, js)) if not p.is_file() or p.read_text() != want]
-        if stale:
-            print('Stale index: ' + ', '.join(stale) + ' — run scripts/build_index.py')
+        unseeded, missing = pending_vendor(ROOT)
+        if unseeded:
+            print('Vendor not seeded (stays out of the index): ' + ', '.join(unseeded) +
+                  ' — seed the vendor/ destinations, then set vendor_seeded: true in .sync/upstreams.json')
+        if missing:
+            print('vendor_seeded: true but missing: ' + ', '.join(missing))
+        if stale or unseeded or missing:
+            if stale:
+                print('Stale index: ' + ', '.join(stale) + ' — run scripts/build_index.py')
             raise SystemExit(1)
         print('INDEX.md and index.json are up to date.')
     else:

@@ -19,14 +19,22 @@
     "show-me": ["html"],
     "grill-me": ["grilling"]
   },
+  "retired": {
+    "*": ["adr", "brainstorming", "repo-eval", "service-archive", "work-archive"],
+    "~/.gemini/skills": [
+      "codebase-design", "diagnosing-bugs", "grill-me", "grill-with-docs",
+      "grilling", "tdd", "teach"
+    ],
+    "~/.codex/skills": ["codex-external-workers"]
+  },
   "vendor": {
     "matt": {
       "title": "Matt Pocock skills (vendored at vendor/matt, see .sync/upstreams.json)",
       "note": "Heavier workflow suite; load on demand. matt-flow is the fork's flow map. Buckets: engineering, productivity are promoted; misc, in-progress, deprecated are not."
     },
     "pstack": {
-      "title": "pstack (cursor/plugins, vendored at vendor/pstack when seeded)",
-      "note": "Cursor-native plugin: subagents, sibling paths, automations. On Cursor prefer the native plugin; elsewhere text-only with degraded features."
+      "title": "pstack (cursor/plugins, vendored whole at vendor/pstack)",
+      "note": "Vendored as one whole plugin (subagents, sibling paths, automations). On Cursor prefer the native plugin; elsewhere the indexed texts read with degraded features."
     }
   }
 }

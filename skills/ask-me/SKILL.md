@@ -15,10 +15,13 @@ Route to skills through this repository's index. Recommend only; never install o
    - `../index.json` (a copy placed at the install root),
    - `../../index.json` (running from a clone, at `skills/ask-me/`).
    If none exists, say the index is missing and stop.
-2. From the user's request, recommend 1–3 entries. For each: name, one-line summary, and its relative `path`. Then **stop and wait**; do not read skill bodies yet.
-3. **"Use it here" / "就在这里用"**: read the chosen `SKILL.md` at its indexed path under the repository root, plus every entry in its `depends` list. Dependencies only need to sit beside it as directories (`eli5` and `show-me` need the sibling `html` directory; do not read a dependency's body). Then follow the loaded instructions here. This is degraded use: argument substitution and the skill's own relative-path handling are not guaranteed; for full fidelity install instead.
-4. **"Install into this project" / "装进项目"**: do not copy files yourself. Tell the user to run:
-   `python3 <path-to-this-repo>/scripts/install-base --apply --project --skill <name>`
+2. Locate the source repository — index paths resolve against it:
+   - `source.json` next to this `SKILL.md` (written into copied installs): its `repo` is the absolute path of the clone and `ref` the commit it was installed from. If `repo` does not exist, say the source clone is gone and stop.
+   - Otherwise the repository root is `../../` (this file sits at `skills/ask-me/` inside the clone, directly or through a symlink); `ref` is `git -C <repo> rev-parse HEAD`.
+3. From the user's request, recommend 1–3 entries. For each: name, one-line summary, and its relative `path`. Then **stop and wait**; do not read skill bodies yet.
+4. **"Use it here" / "就在这里用"**: read the chosen `SKILL.md` at `<repo>/<path>`, plus every entry in its `depends` list. Dependencies only need to sit beside it as directories (`eli5` and `show-me` need the sibling `html` directory; do not read a dependency's body). Then follow the loaded instructions here. This is degraded use: argument substitution and the skill's own relative-path handling are not guaranteed; for full fidelity install instead.
+5. **"Install into this project" / "装进项目"**: do not copy files yourself. Tell the user to run:
+   `python3 <repo>/scripts/install-base --apply --project --source <repo> --ref <ref> --skill <name>`
    It copies the skill and its dependencies into `.agents/skills/` and `.claude/skills/`.
 
 ## Notes

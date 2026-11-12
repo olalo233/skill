@@ -75,8 +75,70 @@ Heavier workflow suite; load on demand. matt-flow is the fork's flow map. Bucket
 | `wait-what` | Stop. | `vendor/matt/skills/productivity/wait-what/SKILL.md` |  |
 | `writing-for-agents` | Writing documents for agents. | `vendor/matt/skills/productivity/writing-for-agents/SKILL.md` |  |
 
-## pstack (cursor/plugins, vendored at vendor/pstack when seeded)
+## pstack (cursor/plugins, vendored whole at vendor/pstack)
 
-Cursor-native plugin: subagents, sibling paths, automations. On Cursor prefer the native plugin; elsewhere text-only with degraded features.
+Vendored as one whole plugin (subagents, sibling paths, automations). On Cursor prefer the native plugin; elsewhere the indexed texts read with degraded features.
 
-_Not vendored yet; see `.sync/upstreams.json` (`vendor_seeded: false`)._
+| Skill | Summary | Path | Depends |
+| --- | --- | --- | --- |
+| `reproduce-and-fix-issues` | Reproduce triaged Slack bugs through a configured app-control adapter, verify existing fixes, and open a bounded draft pull request only after before-and-after  | `vendor/pstack/automations/benny/skills/reproduce-and-fix-issues/SKILL.md` |  |
+| `setup-benny` | Configure Benny and prepare its triage and repro automations. | `vendor/pstack/automations/benny/skills/setup-benny/SKILL.md` |  |
+| `triage-issue-reports` | Triage Slack issue reports with one thread-only verdict, evidence review, cause-aware routing, tracker dedupe, and fail-closed ticket creation. | `vendor/pstack/automations/benny/skills/triage-issue-reports/SKILL.md` |  |
+| `architect` | Sketch types, signatures, and module structure before code, then stay in the loop while implementation fills in. | `vendor/pstack/skills/architect/SKILL.md` |  |
+| `arena` | Spawn N parallel candidates at the same task, pick a base, graft the strongest parts of the losers into it. | `vendor/pstack/skills/arena/SKILL.md` |  |
+| `automate-me` | Use for \"automate me\", \"create/update/refresh my -mode skill\", \"turn/capture my preferences or working style into a skill\", or wanting agents to follow ho | `vendor/pstack/skills/automate-me/SKILL.md` |  |
+| `benchmark-checklist` | Vet a perf measurement (limiter, tuning, limits, errors, repeatability, relevance, and whether the work happened) before you report or act on it. | `vendor/pstack/skills/benchmark-checklist/SKILL.md` |  |
+| `blast-radius` | Find what a change could break somewhere else before it ships, beyond the diff, and prove the one fact it's safe because of by running real code instead of writ | `vendor/pstack/skills/blast-radius/SKILL.md` |  |
+| `bro` | Restate the last message in plain human language, with no jargon. | `vendor/pstack/skills/bro/SKILL.md` |  |
+| `correct` | Find the mistakes agents keep repeating in this repo and make each one impossible. | `vendor/pstack/skills/correct/SKILL.md` |  |
+| `create-formal-verification-skill` | Generate a project-local skill that formally verifies the code where a bug costs the most and tests reach the least, in any language, with whichever verificatio | `vendor/pstack/skills/create-formal-verification-skill/SKILL.md` |  |
+| `create-verification-skill` | Generate a project-local verification skill that drives your app the way a user does — any language, framework, or platform. | `vendor/pstack/skills/create-verification-skill/SKILL.md` |  |
+| `figure-it-out` | Design an auditable playbook when no narrower one fits: a large migration, an ambitious multi-part change, or work a human reviews after stepping away. | `vendor/pstack/skills/figure-it-out/SKILL.md` |  |
+| `how` | Use for \"how does X work\", code walkthroughs before changing something, and placement / ownership / layering questions (\"where should this live\", \"which pa | `vendor/pstack/skills/how/SKILL.md` |  |
+| `in-your-own-words` | Restate in your own words what you think the user's goals are and what problem they're trying to solve. | `vendor/pstack/skills/in-your-own-words/SKILL.md` |  |
+| `interrogate` | Use for \"interrogate\", \"adversarial review\", \"multi-model review\", \"challenge this\", \"stress test this code\", \"find blind spots\", or \"tear this apa | `vendor/pstack/skills/interrogate/SKILL.md` |  |
+| `ketchup` | Catch the user up on what changed in this chat since their last message, in plain words and small visuals. | `vendor/pstack/skills/ketchup/SKILL.md` |  |
+| `ketchup-video` | Catch the user up like /ketchup, with a short subtitled video of slides for what happened and the waiting calls as text under it. | `vendor/pstack/skills/ketchup-video/SKILL.md` |  |
+| `maintain-formal-verification-skill` | Bring a project's formal verification back in line with the code after the code changes: find the commits that touched verified code, update the model, harness, | `vendor/pstack/skills/maintain-formal-verification-skill/SKILL.md` |  |
+| `maintain-verification-skill` | Periodic pass that keeps a project's verification skill and feature map honest: parallel source readers per feature, one live session driving every feature, at  | `vendor/pstack/skills/maintain-verification-skill/SKILL.md` |  |
+| `make-bot-ui` | Use when building a custom UI (page, dashboard, buttons) that should wake a Grok Bot over a webhook, when the user must provide a webhook sender key, or when ex | `vendor/pstack/skills/make-bot-ui/SKILL.md` |  |
+| `no-comments` | Spawn Comment Sicko, fix accepted findings, and offer encodings for claimed constraints. | `vendor/pstack/skills/no-comments/SKILL.md` |  |
+| `poteto-help` | Guides users through pstack setup, /poteto-mode, and picking the skill, playbook, or principle for a task. | `vendor/pstack/skills/poteto-help/SKILL.md` |  |
+| `poteto-mode` | poteto's agent style for concise, detailed responses, deliberate subagents, unslopped prose, simple code, and verified work. | `vendor/pstack/skills/poteto-mode/SKILL.md` |  |
+| `principle-attack-the-premise` | Apply when two or more fixes that share one premise have failed the same gate. | `vendor/pstack/skills/principle-attack-the-premise/SKILL.md` |  |
+| `principle-boundary-discipline` | Apply when wiring validation, error handling, or framework adapters. | `vendor/pstack/skills/principle-boundary-discipline/SKILL.md` |  |
+| `principle-build-the-lever` | Apply to any non-trivial work, not just bulk work: edits, migrations, analyses, checks. | `vendor/pstack/skills/principle-build-the-lever/SKILL.md` |  |
+| `principle-encode-lessons-in-structure` | Apply when you catch yourself writing the same instruction a second time, or notice a recurring correction. | `vendor/pstack/skills/principle-encode-lessons-in-structure/SKILL.md` |  |
+| `principle-exhaust-the-design-space` | Apply when facing a novel UI interaction or architectural decision with no precedent in the codebase. | `vendor/pstack/skills/principle-exhaust-the-design-space/SKILL.md` |  |
+| `principle-experience-first` | Apply when product, UX, or feature-scope tradeoffs come up. | `vendor/pstack/skills/principle-experience-first/SKILL.md` |  |
+| `principle-explain-the-number` | Apply before you measure, and before you trust, report, or act on a number you measured: a speedup, a regression, a throughput, a latency, or an eval result. | `vendor/pstack/skills/principle-explain-the-number/SKILL.md` |  |
+| `principle-fix-root-causes` | Apply when debugging. | `vendor/pstack/skills/principle-fix-root-causes/SKILL.md` |  |
+| `principle-foundational-thinking` | Apply before writing logic: choosing core types and data structures, sequencing scaffold-vs-feature work, asking what concurrent actors share. | `vendor/pstack/skills/principle-foundational-thinking/SKILL.md` |  |
+| `principle-guard-the-context-window` | Apply when context is filling up: large outputs, long files, repeated reads, fan-out planning. | `vendor/pstack/skills/principle-guard-the-context-window/SKILL.md` |  |
+| `principle-laziness-protocol` | Apply when refactoring, evaluating diff size, or tempted to add abstractions, layers, or signal threading. | `vendor/pstack/skills/principle-laziness-protocol/SKILL.md` |  |
+| `principle-make-operations-idempotent` | Apply when designing commands, lifecycle steps, or processing loops that run amid crashes, restarts, and retries. | `vendor/pstack/skills/principle-make-operations-idempotent/SKILL.md` |  |
+| `principle-migrate-callers-then-delete-legacy-apis` | Apply when introducing a new internal API while old callers still exist. | `vendor/pstack/skills/principle-migrate-callers-then-delete-legacy-apis/SKILL.md` |  |
+| `principle-minimize-reader-load` | Apply when reviewing or shaping code that's hard to trace. | `vendor/pstack/skills/principle-minimize-reader-load/SKILL.md` |  |
+| `principle-model-the-domain` | Apply when writing stateful logic, or when code branches a lot or repeats a shape assumption across files. | `vendor/pstack/skills/principle-model-the-domain/SKILL.md` |  |
+| `principle-never-block-on-the-human` | Apply when tempted to ask 'should I do X?' on reversible work. | `vendor/pstack/skills/principle-never-block-on-the-human/SKILL.md` |  |
+| `principle-outcome-oriented-execution` | Apply during planned rewrites and migrations with explicit phase boundaries. | `vendor/pstack/skills/principle-outcome-oriented-execution/SKILL.md` |  |
+| `principle-prove-it-works` | Apply after completing a task, before declaring done. | `vendor/pstack/skills/principle-prove-it-works/SKILL.md` |  |
+| `principle-redesign-from-first-principles` | Apply when integrating a new requirement into an existing design. | `vendor/pstack/skills/principle-redesign-from-first-principles/SKILL.md` |  |
+| `principle-separate-before-serializing-shared-state` | Apply when concurrent actors might write to the same file, branch, key, or state object. | `vendor/pstack/skills/principle-separate-before-serializing-shared-state/SKILL.md` |  |
+| `principle-sequence-verifiable-units` | Apply to multi-step work (sweeps, migrations, runs of similar edits) and to how you stack commits and PRs. | `vendor/pstack/skills/principle-sequence-verifiable-units/SKILL.md` |  |
+| `principle-subtract-before-you-add` | Apply when sequencing an addition, refactor, or rewrite. | `vendor/pstack/skills/principle-subtract-before-you-add/SKILL.md` |  |
+| `principle-test-behavior-not-implementation` | Apply when you write, change, or keep a test. | `vendor/pstack/skills/principle-test-behavior-not-implementation/SKILL.md` |  |
+| `principle-type-system-discipline` | Apply when designing types, reviewing a function signature, or writing code in any statically-typed language. | `vendor/pstack/skills/principle-type-system-discipline/SKILL.md` |  |
+| `recall` | Reconstruct your recent working context from your own chat history, live state, and the shared record (user reports, prior fixes, incidents), then hand back a t | `vendor/pstack/skills/recall/SKILL.md` |  |
+| `reflect` | Spawn three parallel review subagents over the active transcript, surface learnings, and route each to a concrete edit on an existing skill. | `vendor/pstack/skills/reflect/SKILL.md` |  |
+| `setup-pstack` | Configure which models pstack uses per role and at what reasoning budget. | `vendor/pstack/skills/setup-pstack/SKILL.md` |  |
+| `sharpen` | Make a task deeper, not bigger, then rewrite the prompt. | `vendor/pstack/skills/sharpen/SKILL.md` |  |
+| `show-me-your-work` | Keep a reviewable decision trail for long-running or unattended work: a TSV log with one row per decision (what, why, evidence, result). | `vendor/pstack/skills/show-me-your-work/SKILL.md` |  |
+| `statechart` | Check a TLA+ model of a system that moves between states, such as a product flow, a protocol, or a service, and draw it as a Mermaid statechart. | `vendor/pstack/skills/statechart/SKILL.md` |  |
+| `swarm` | Fan out N parallel workers, drain them, and return one report. | `vendor/pstack/skills/swarm/SKILL.md` |  |
+| `tdd` | Use only when the user explicitly asks for TDD, a failing test, or a regression test, OR when the bug has an obvious cheap local test target. | `vendor/pstack/skills/tdd/SKILL.md` |  |
+| `teach` | Explain a body of work plainly so a person actually understands it. | `vendor/pstack/skills/teach/SKILL.md` |  |
+| `technical-writing` | Layered technical-writing standard: Diátaxis structure, Google developer style sentences, STE instruction rules, Global English syntax. | `vendor/pstack/skills/technical-writing/SKILL.md` |  |
+| `typescript-best-practices` | TypeScript best practices. | `vendor/pstack/skills/typescript-best-practices/SKILL.md` |  |
+| `unslop` | Cut AI tells from any writing. | `vendor/pstack/skills/unslop/SKILL.md` |  |
+| `why` | Use for 'why does X work this way', 'why we picked Y', design rationale, regressions, postmortems, or data-backed thresholds. | `vendor/pstack/skills/why/SKILL.md` |  |

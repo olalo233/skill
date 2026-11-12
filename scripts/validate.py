@@ -14,13 +14,19 @@ for relative in sorted(set(filter(None, files))):
         continue
     if path.is_symlink():
         errors.append(f'{relative}: symlinks are not distributable'); continue
-    content = path.read_text(encoding='utf-8')
-    for label, pattern in {
+    try:
+        content = path.read_text(encoding='utf-8')
+    except UnicodeDecodeError:
+        continue  # binary assets can't hold the text markers scanned below
+    checks = {
         'personal home path': r'/(?:Users|home)/[A-Za-z0-9_.-]+/',
         'private address': r'\b(?:10\.(?:\d+\.){2}\d+|192\.168\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[01])\.\d+\.\d+)\b',
         'merge conflict': r'^(?:<<<<<<< |=======\s*$|>>>>>>> )',
         'private key': r'-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----',
-    }.items():
+    }
+    if relative.startswith('vendor/'):
+        del checks['personal home path']  # verbatim upstream text may use /Users/you examples
+    for label, pattern in checks.items():
         if re.search(pattern, content, re.M): errors.append(f'{relative}: {label}')
 
 skills = {p.parent.name: p for p in (ROOT / 'skills').glob('*/SKILL.md')}
