@@ -9,6 +9,7 @@
 | 可视化解释 | `html`、`show-me`、`eli5` | 中文阅读排版、图解与浅显解释；共享跟随系统的双色资产 |
 | 开发讨论 | `grill-me`、`grilling`、`wait-what` | 明确问题、审视方案、重新解释 |
 | 原型与审查 | `prototype`、`ponytail-review` | 验证具体想法、按需检查过度复杂性 |
+| 拍照报告 | `compact-report` | 高密度纯文本报告（C2 格式），便于拍照带出后由其他模型读回；自有技能，附格式检查脚本 |
 
 通用解释技能不依赖 GSD。采用 GSD 的开发项目参见 [开发套件](docs/gsd-suite.md)；其 [项目规则](docs/gsd-project-policy.md) 仅按需合并进项目，不自动安装或覆盖用户规则。
 

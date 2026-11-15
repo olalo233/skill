@@ -1,0 +1,37 @@
+FMT=C2 | RPT=示例数据-SQLR-01 | TZ=+08 | 日期=2026-11-09 | 作者=示例
+#图例 级:高/中/低 | Fn发现 E-n证据 An建议 Pn优先级 Cn待确认 | L=文件:行号
+§0 KEY 字段序: 作业 | SQL文件 | 语句数 | 高 | 中 | 低 | 最严重 | 结论 | 置信
+0.1 J2 | j2-fault-state.sql | 7 | 2 | 2 | 0 | F1状态无限增长 | 上线前必须改 | 中
+0.2 J1 | j1-point-write.sql | 5 | 0 | 1 | 1 | F4 sink非幂等 | 可上线需跟进 | 中
+§1 ENV 环境
+1.1 Flink2.3.0 Java17 standalone; SQL由启动器runner.jar提交; 并行度2; ckpt 30s EXACTLY_ONCE
+1.2 依赖: kafka connector 4.0; jdbc connector 4.0; 自研redis sink 1.2; 启动器读conf/job-*.yaml
+§2 FND 发现
+2.1 F1 级=高 J2 state.ttl=0 且有双流regular join, 状态永不过期, 堆内存持续增长(E-1,E-2)
+2.2 F2 级=高 J2 GROUP BY device_id,fault_code 无窗口, key数随设备数增长无上限(E-5)
+2.3 F3 级=中 J2 source未定义WATERMARK, 下游用事件时间窗口, 疑窗口永不触发(E-6)
+2.4 F4 级=中 J1 redis sink用INCR非幂等写, 从checkpoint恢复时会重复累加(E-4)
+2.5 F5 级=中 J2 scan.startup.mode=earliest-offset, 重新提交时全量重放(E-6)
+2.6 F6 级=低 J1 未开mini-batch, 疑高峰期Redis写放大约3倍
+§3 LOC 位置
+3.1 F1 L=j2-fault-state.sql:12 | F1 L=j2-fault-state.sql:41 | F2 L=j2-fault-state.sql:58
+3.2 F3 L=j2-fault-state.sql:3-19 | F5 L=j2-fault-state.sql:17 | F4 L=j1-point-write.sql:33
+3.3 F4 启动器 L=JobLauncher.java:88 未覆盖sink语义配置
+§4 EV 证据
+4.1 [E-1 j2-fault-state.sql:12] SET 'table.exec.state.ttl' = '0';
+4.2 [E-2 j2-fault-state.sql:41] LEFT JOIN dev_dim d ON f.device_id = d.device_id
+4.3 [E-3 conf/job-j2.yaml:9] parallelism: 2 (未设state.backend.type, 默认hashmap)
+4.4 [E-4 RedisSink.java:120] jedis.incrBy(key, v) 无去重key
+4.5 [E-5 j2-fault-state.sql:58] GROUP BY device_id, fault_code
+4.6 [E-6 j2-fault-state.sql:17] 'scan.startup.mode' = 'earliest-offset', 无WATERMARK定义
+§5 IMP 影响
+5.1 F1+F2: 堆内状态持续增长, 疑为TM内存问题的诱因之一. 置信=中
+5.2 F3: 窗口结果缺失, 下游故障统计偏少. 置信=中 | F4: 恢复后计数偏大. 置信=高
+§6 ACT 建议(需人确认)
+6.1 A1 P1 J2 设table.exec.state.ttl=7d(按业务确认); 险=过期后重新计数; 重启=是; 回退=原值
+6.2 A2 P1 J2 dev_dim改为lookup join; 险=维表延迟; 重启=是; 回退=原SQL
+6.3 A3 P2 J2 source加WATERMARK FOR ts AS ts - INTERVAL '5' SECOND; 险=NA; 重启=是; 回退=删WATERMARK
+6.4 A4 P2 J1 sink改为SET覆盖写或带去重key; 险=需改代码; 重启=是; 回退=原版本
+§7 TODO 待确认
+7.1 C1 状态后端生效值和当前状态大小 | C2 dev_dim更新频率 | C3 业务能接受的TTL上限
+§END 节=0-7 编号行=26
