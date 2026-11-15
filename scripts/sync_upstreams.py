@@ -76,8 +76,8 @@ def merge_mode(ours, base, theirs):
 def plan_mapping(root, old, new, destination):
     root = root.resolve()
     safe_path(destination)
-    if PurePosixPath(destination).parts[0] not in ('skills', 'licenses'):
-        raise ValueError('Sync destinations must be inside skills/ or licenses/')
+    if PurePosixPath(destination).parts[0] not in ('skills', 'licenses', 'vendor'):
+        raise ValueError('Sync destinations must be inside skills/, licenses/ or vendor/')
     plan, conflicts = {}, []
     for relative in sorted(old.keys() | new.keys()):
         path = root / destination / relative if relative else root / destination
@@ -122,6 +122,14 @@ def validate_manifest(manifest):
             path = safe_path(mapping['destination'])
             if len(path.parts) < 2 or path.parts[0] not in ('skills', 'licenses'):
                 raise ValueError('Sync destinations must be inside skills/ or licenses/')
+            if any(path == other or path in other.parents or other in path.parents for other in destinations):
+                raise ValueError('Overlapping upstream destinations')
+            destinations.append(path)
+        for mapping in source.get('vendor_paths', []):
+            safe_path(mapping['source'])
+            path = safe_path(mapping['destination'])
+            if len(path.parts) < 2 or path.parts[0] != 'vendor':
+                raise ValueError('Vendor destinations must be inside vendor/')
             if any(path == other or path in other.parents or other in path.parents for other in destinations):
                 raise ValueError('Overlapping upstream destinations')
             destinations.append(path)
@@ -175,7 +183,7 @@ def sync(root, report_path, cache=None):
                 git(mirror, 'cat-file', '-e', base + '^{commit}')
             except subprocess.CalledProcessError:
                 git(mirror, 'fetch', '--quiet', '--depth=1', url, base)
-            for mapping in source['paths']:
+            for mapping in source['paths'] + source.get('vendor_paths', []):
                 old = snapshot(mirror, base, mapping['source'])
                 new = snapshot(mirror, head, mapping['source'])
                 destination = mapping['destination']

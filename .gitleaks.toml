@@ -1,0 +1,11 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "WebCrypto hybrid KEM algorithm identifier (MLKEM768-X25519) in Modern Web Guidance"
+paths = [
+  '''^skills/modern-web-guidance/guides/security/client-side-encryption\.md$''',
+]
+regexes = [
+  '''MLKEM768-X25519''',
+]

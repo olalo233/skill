@@ -1,0 +1,32 @@
+{
+  "name": "ui-kit",
+  "title": "UI kit: design taste, modern web platform, UI behaviors, prototypes",
+  "kind": "skills",
+  "note": "impeccable is the single source of visual direction (init/document/polish/critique/audit); modern-web-guidance provides Baseline/modern HTML, CSS, and client-side JS best practices; ui-sdk covers accessible UI behaviors and components across React, Vue, Svelte, Solid, and web components; prototype answers design questions with throwaway code. The impeccable detector CLI (upstream scripts/impeccable) is NOT in this suite -- optional extra, add it manually if wanted. dataviz is pending: its source is unverified, so no member is pinned yet; antvis antv-g2-chart is the fallback candidate once its offline behavior is confirmed.",
+  "members": [
+    {
+      "name": "impeccable",
+      "path": "skills/impeccable",
+      "depends": [],
+      "role": "member"
+    },
+    {
+      "name": "modern-web-guidance",
+      "path": "skills/modern-web-guidance",
+      "depends": [],
+      "role": "member"
+    },
+    {
+      "name": "prototype",
+      "path": "vendor/matt/skills/engineering/prototype",
+      "depends": [],
+      "role": "member"
+    },
+    {
+      "name": "ui-sdk",
+      "path": "skills/ui-sdk",
+      "depends": [],
+      "role": "member"
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+#!/bin/sh
+# Install the ui-kit suite (impeccable + prototype) into the current
+# project. Thin wrapper around scripts/install-base; extra flags pass
+# through. Dry-run unless --apply is given.
+set -eu
+REPO="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
+exec python3 "$REPO/scripts/install-base" --project --source "$REPO" --ref HEAD --suite ui-kit "$@"

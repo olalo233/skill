@@ -1,0 +1,5 @@
+interface:
+  display_name: "System Design"
+  short_description: "Clarify, estimate, lay out components, and weigh trade-offs for a system design"
+policy:
+  allow_implicit_invocation: false

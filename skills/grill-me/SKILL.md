@@ -2,6 +2,8 @@
 name: grill-me
 description: "On explicit request, sharpen a plan or design with grilling in the current conversation."
 disable-model-invocation: true
+triggers:
+  - user
 ---
 
 Invoke `grilling` in this conversation, not in an isolated interview subagent. When the runtime has a Skill tool, call it with `grilling`. Otherwise, read the installed sibling `../grilling/SKILL.md` and apply it here. If the dependency is missing, report it; do not invent a replacement interview.

@@ -2,6 +2,8 @@
 name: wait-what
 description: "On explicit request, explain an unclear message again in clear Chinese or English without changing the task."
 disable-model-invocation: true
+triggers:
+  - user
 ---
 
 The last explanation did not land. Explain it again; do not restart the project or advance implementation.
@@ -16,8 +18,8 @@ For Chinese, use natural, concrete wording and introduce an unfamiliar term brie
 
 Give the missing background, the actual point, and its consequence for the current task. Start with the question the user is trying to answer. Make the responsible component, action, data/state change, and causal link explicit when relevant. A small example or before/after comparison is often better than another abstraction. Be brief enough to reduce effort, but do not remove material constraints or uncertainty.
 
-Reuse terminology already agreed in this conversation and relevant existing project or GSD context files. Consult an existing GLOSSARY.md (following GLOSSARY-MAP.md when present) or context map only when it exists and is relevant. Do not require or create GLOSSARY.md, GLOSSARY-MAP.md, CONTEXT.md, CONTEXT-MAP.md, or a new glossary system.
+Reuse terminology already agreed in this conversation and relevant existing project or GSD context files. Consult an existing GLOSSARY.md (following GLOSSARY-MAP.md when present), CONTEXT.md (following CONTEXT-MAP.md when present), or context map only when it exists and is relevant. Do not require or create GLOSSARY.md, GLOSSARY-MAP.md, CONTEXT.md, CONTEXT-MAP.md, or a new glossary system.
 
-Separate facts, assumptions, and recommendations. When the previous explanation was mistaken, correct it explicitly rather than making the mistake easier to read. When a decision really is needed, state the decision, recommendation, and reason; do not turn routine engineering details into new questions for the user. A request for explanation is not approval of the previous proposal.
+Rephrase the answer instead of repeating the earlier wording verbatim. Separate facts, assumptions, and recommendations. When the previous explanation was mistaken, correct it explicitly rather than making the mistake easier to read. When a decision really is needed, state the decision, recommendation, and reason; do not turn routine engineering details into new questions for the user. A request for explanation is not approval of the previous proposal.
 
 Use a tiny diagram only when it materially helps; `show-me` is available when a visual is the better explanation. Do not automatically run another skill, generate a presentation, research the entire project, edit files, or resume execution. Finish the clarification and leave the existing workflow and scope unchanged unless the user explicitly requests more.

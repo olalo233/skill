@@ -1,0 +1,39 @@
+{
+  "name": "matt-dev",
+  "title": "Matt Pocock development loop (vendored at vendor/matt)",
+  "kind": "skills",
+  "includes": ["matt-plan"],
+  "note": "The 5 implementation members plus the shared matt-plan sub-suite (clarify/spec/tickets, vendored at vendor/matt). matt-flow additionally routes to optional skills not in this suite: handoff, prototype, grill-me, research, teach, improve-codebase-architecture (vendored but not required) and resolving-merge-conflicts, writing-great-skills (not vendored).",
+  "members": [
+    {
+      "name": "code-review",
+      "path": "vendor/matt/skills/engineering/code-review",
+      "depends": ["setup-matt-pocock-skills"],
+      "role": "member"
+    },
+    {
+      "name": "diagnosing-bugs",
+      "path": "vendor/matt/skills/engineering/diagnosing-bugs",
+      "depends": [],
+      "role": "member"
+    },
+    {
+      "name": "implement",
+      "path": "vendor/matt/skills/engineering/implement",
+      "depends": ["code-review", "tdd"],
+      "role": "member"
+    },
+    {
+      "name": "matt-flow",
+      "path": "vendor/matt/skills/engineering/matt-flow",
+      "depends": [],
+      "role": "member"
+    },
+    {
+      "name": "tdd",
+      "path": "vendor/matt/skills/engineering/tdd",
+      "depends": ["codebase-design"],
+      "role": "member"
+    }
+  ]
+}

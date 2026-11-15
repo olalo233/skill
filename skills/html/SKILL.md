@@ -1,6 +1,6 @@
 ---
 name: html
-description: Create and edit visual explanatory documents in HTML for concepts, mechanisms, and research findings.
+description: Use when the user asks for a visual explanatory document in HTML about a concept, mechanism, or research finding.
 ---
 
 # Explanatory Documents in HTML

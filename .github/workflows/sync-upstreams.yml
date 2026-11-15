@@ -1,7 +1,7 @@
 name: Sync upstreams
 on:
-  schedule:
-    - cron: '23 3 * * 1'
+  # schedule:                        # Disabled until follow-up PR fixes binary
+  #   - cron: '23 3 * * 1'           # sync and PR-based release
   workflow_dispatch:
 permissions:
   contents: read
@@ -10,7 +10,8 @@ concurrency:
   cancel-in-progress: false
 jobs:
   sync:
-    if: github.ref == 'refs/heads/main'
+    # if: github.ref == 'refs/heads/main'   (restore this guard when re-enabling)
+    if: false # Disabled until follow-up PR fixes binary sync and PR-based release
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -53,7 +54,7 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add skills licenses .sync/upstreams.json
+          git add skills licenses vendor .sync/upstreams.json
           if ! git diff --cached --quiet; then
             git commit -m 'chore: merge reviewed upstream skill paths'
           fi
