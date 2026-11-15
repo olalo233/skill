@@ -1,3 +1,5 @@
+<!-- Modified from pbakaus/impeccable (Apache-2.0) for this repository; see MODIFICATIONS.md. -->
+
 # Operate
 
 The two sections below are the mode rules new-work.md refers to; read them directly. On an Operate surface the visitor came to get a job done, so the page is first a working product of its category and the world serves it.

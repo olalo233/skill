@@ -7,6 +7,8 @@ triggers:
   - user
 ---
 
+<!-- Modified from anthropics/claude-plugins-community (Apache-2.0) for this repository; see MODIFICATIONS.md. -->
+
 # eli5
 
 Explain like I'm someone who knows nothing about this topic, using a HTML artifact with big pictures and few words.

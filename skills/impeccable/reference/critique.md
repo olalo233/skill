@@ -1,3 +1,5 @@
+<!-- Modified from pbakaus/impeccable (Apache-2.0) for this repository; see MODIFICATIONS.md. -->
+
 ### Purpose
 
 Resolve one stable target, run two independent assessments, synthesize a design critique, persist a snapshot, and ask the user what to improve next. The chat response is the primary deliverable; the snapshot is an archive of that run.

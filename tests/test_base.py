@@ -205,5 +205,41 @@ class ImpeccableOfflineTests(unittest.TestCase):
                           f'{degraded.name} drifted from {toml.name}')
 
 
+class UpstreamNoticeTests(unittest.TestCase):
+    """Apache-2.0 §4(b): every retained file that differs from the vendored
+    upstream must carry a prominent modification notice pointing at the
+    derivation ledger."""
+
+    UPSTREAM = ROOT / 'vendor/impeccable/skills/impeccable'
+    DERIVED = ROOT / 'skills/impeccable'
+
+    def test_modified_files_carry_apache_notice(self):
+        missing = []
+        for vf in sorted(self.UPSTREAM.rglob('*')):
+            if not vf.is_file():
+                continue
+            rel = vf.relative_to(self.UPSTREAM)
+            df = self.DERIVED / rel
+            if not df.is_file() or vf.read_bytes() == df.read_bytes():
+                continue  # dropped or verbatim files need no notice
+            text = df.read_text(errors='replace')
+            if 'Modified from' not in text or 'MODIFICATIONS.md' not in text:
+                missing.append(str(rel))
+        self.assertEqual(missing, [])
+
+    def test_eli5_apache_derivation_is_documented(self):
+        skill = ROOT / 'skills/eli5'
+        self.assertTrue((skill / 'LICENSE').is_file())
+        self.assertTrue((skill / 'MODIFICATIONS.md').is_file())
+        text = (skill / 'SKILL.md').read_text()
+        self.assertIn('Modified from', text)
+        self.assertIn('MODIFICATIONS.md', text)
+
+    def test_every_curated_skill_dir_ships_a_license(self):
+        for d in sorted((ROOT / 'skills').iterdir()):
+            if d.is_dir() and (d / 'SKILL.md').is_file():
+                self.assertTrue((d / 'LICENSE').is_file(), d.name)
+
+
 if __name__ == '__main__':
     unittest.main()

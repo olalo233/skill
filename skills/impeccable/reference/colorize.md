@@ -1,3 +1,5 @@
+<!-- Modified from pbakaus/impeccable (Apache-2.0) for this repository; see MODIFICATIONS.md. -->
+
 > **Additional context needed**: existing brand colors.
 
 Introduce color as hierarchy, meaning, and atmosphere. Preserve confirmed brand and semantic conventions; do not replace a visual world under the guise of colorizing it.

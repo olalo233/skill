@@ -1,3 +1,5 @@
+<!-- Modified from pbakaus/impeccable (Apache-2.0) for this repository; see MODIFICATIONS.md. -->
+
 # Command guidance
 
 ## Workflow questions

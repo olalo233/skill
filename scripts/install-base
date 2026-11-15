@@ -45,6 +45,7 @@ Suites are declared in suites/<name>.json inside the source tree:
 """
 import argparse
 import contextlib
+import errno
 import hashlib
 import io
 import json
@@ -295,7 +296,7 @@ def license_map_for(upstreams_text):
                     if PurePosixPath(m['destination']).parts[0] == 'licenses']
         if not licenses:
             continue
-        for group in ('paths', 'vendor_paths'):
+        for group in ('paths', 'vendor_paths', 'derived_paths'):
             for mapping in source.get(group, []):
                 dest = mapping['destination'].rstrip('/')
                 if PurePosixPath(dest).parts[0] in ('skills', 'vendor'):
@@ -570,6 +571,31 @@ def check_final_names(members):
         seen[m['name']] = m['path']
 
 
+def _write_askme_provenance(staged, mpath, snap, meta):
+    """Write source.json (with per-skill and per-file digests) + index files."""
+    skill_digests, file_digests = {}, {}
+    for e in meta.get('entries', []):
+        edir = skill_dir(e)
+        esnap = snap / edir
+        if not esnap.is_dir() or edir in skill_digests:
+            continue
+        skill_digests[edir] = tree_digest(esnap)
+        for p in sorted(esnap.rglob('*')):
+            if p.is_file() and not p.is_symlink():
+                file_digests[p.relative_to(snap).as_posix()] = _file_sha256(p)
+    (staged / 'source.json').write_text(json.dumps({
+        'repo': meta['collection_id'],
+        'upstream': upstream_repo_for(mpath, meta['repo_map']),
+        'commit': meta['sha'],
+        'source_path': mpath,
+        'snapshot_root': f'{SNAP_DIRNAME}/{meta["sha"]}',
+        'skill_digests': skill_digests,
+        'file_digests': file_digests}, indent=2) + '\n')
+    for fname in INDEX_FILES:
+        if (snap / fname).is_file():
+            shutil.copy2(str(snap / fname), str(staged / fname))
+
+
 def stage_payloads(members, snap, meta, stage_root):
     """Final payload dir per member: the snapshot copy plus, when needed,
     injected provenance (ask-me) and legal files, staged as one entity so
@@ -588,17 +614,46 @@ def stage_payloads(members, snap, meta, stage_root):
         for f, dest_name in extra:
             shutil.copy2(str(f), str(staged / dest_name))
         if is_askme:
-            (staged / 'source.json').write_text(json.dumps({
-                'repo': meta['collection_id'],
-                'upstream': upstream_repo_for(m['path'], meta['repo_map']),
-                'commit': meta['sha'],
-                'source_path': m['path'],
-                'snapshot_root': f'{SNAP_DIRNAME}/{meta["sha"]}'}, indent=2) + '\n')
-            for fname in INDEX_FILES:
-                if (snap / fname).is_file():
-                    shutil.copy2(str(snap / fname), str(staged / fname))
+            _write_askme_provenance(staged, m['path'], snap, meta)
         payloads[m['name']] = staged
     return payloads
+
+
+def stage_user_payloads(members, snap, meta, snap_root, sha):
+    """Persistent staged payload dirs for user-level installs: members whose
+    snapshot copy lacks legal files, plus ask-me (so user installs also
+    carry source.json with snapshot digests and index files).
+    Returns {member name: payload dir} for augmented members only."""
+    license_map = meta['license_map']
+    need = {}
+    for m in members:
+        extra = list(legal_files_for(m['path'], snap, license_map))
+        if extra or m['name'] == 'ask-me':
+            need[m['name']] = (m['path'], extra)
+    if not need:
+        return {}
+    # per-member replacement: previously staged members from other installs
+    # must stay put, since installed symlinks still point into them
+    final = snap_root / f'{sha}.payloads'
+    final.mkdir(parents=True, exist_ok=True)
+    for name, (mpath, extra) in need.items():
+        dst = final / name
+        tmp = final / f'.{name}.ibstage-{os.getpid()}'
+        if tmp.exists():
+            shutil.rmtree(tmp)
+        try:
+            shutil.copytree(str(snap / mpath), str(tmp), symlinks=True)
+            for f, dest_name in extra:
+                shutil.copy2(str(f), str(tmp / dest_name))
+            if name == 'ask-me':
+                _write_askme_provenance(tmp, mpath, snap, meta)
+            if dst.exists():
+                shutil.rmtree(dst)
+            os.rename(tmp, dst)
+        except BaseException:
+            shutil.rmtree(tmp, ignore_errors=True)
+            raise
+    return {name: final / name for name in need}
 
 
 def make_backup_dir(backup_dir):
@@ -638,12 +693,83 @@ def remove(path):
 
 def _injected(op):
     """Test hook: INSTALL_BASE_FAIL='op:substr' fails that op mid-apply,
-    after any eviction already happened (an intra-op partial failure)."""
+    after any eviction already happened (an intra-op partial failure).
+    'restore:substr' fails the backup->target move inside rollback, after
+    the new payload was already removed."""
     needle = os.environ.get('INSTALL_BASE_FAIL')
     if needle and ':' in needle:
         kind, sub = needle.split(':', 1)
         if op['op'] == kind and sub in op['path']:
             raise OSError(f'injected failure at {kind} {op["path"]}')
+
+
+def _copy_tree(src, dst):
+    """Copy a file, symlink or directory tree onto dst (dst absent)."""
+    if src.is_symlink():
+        dst.symlink_to(os.readlink(src))
+    elif src.is_file():
+        shutil.copy2(str(src), str(dst))
+    else:
+        shutil.copytree(str(src), str(dst), symlinks=True)
+
+
+def _evict(path, dest, op, save=None):
+    """Move `path` into the backup dir without ever losing the original.
+
+    Same-device rename is atomic. A cross-device move degenerates into a
+    copy that is verified against the op's recorded `before` state and
+    journaled (`backup_committed`) BEFORE the original is removed; a
+    partial or unverifiable copy is cleaned up with `path` left intact.
+    """
+    if 'before' not in op:
+        op['before'] = describe(path)
+    try:
+        os.rename(path, dest)
+    except OSError as exc:
+        if exc.errno != errno.EXDEV:
+            raise
+        try:
+            _copy_tree(path, dest)
+            if describe(dest) != op['before']:
+                raise OSError(f'backup copy of {path} does not match the '
+                              'recorded original')
+        except BaseException:
+            if dest.exists() or dest.is_symlink():
+                remove(dest)
+            raise
+        op['backup_committed'] = True
+        if save:
+            save()
+        remove(path)
+    else:
+        op['backup_committed'] = True
+        if save:
+            save()
+
+
+def _move_verified(src, dst, want):
+    """Move src to dst without ever leaving a half-copied payload at dst.
+
+    Rename when possible; otherwise copy into a sibling temp, verify the
+    copy against `want`, rename it into place, and only then remove src.
+    """
+    try:
+        os.rename(src, dst)
+    except OSError as exc:
+        if exc.errno != errno.EXDEV:
+            raise
+        tmp = dst.parent / f'.{dst.name}.ibrestore-{os.getpid()}'
+        try:
+            _copy_tree(src, tmp)
+            if want and describe(tmp) != want:
+                raise OSError(f'restored copy of {dst} does not match the '
+                              'recorded original')
+            os.rename(tmp, dst)
+        except BaseException:
+            if tmp.exists() or tmp.is_symlink():
+                remove(tmp)
+            raise
+        remove(src)
 
 
 def _stage_dir(src, path):
@@ -679,7 +805,7 @@ def _stage_text(path, text):
         raise
 
 
-def apply_op(op, backup_dir):
+def apply_op(op, backup_dir, save=None):
     path = Path(op['path'])
     if op['op'] == 'mkdir':
         path.mkdir(parents=True, exist_ok=True)
@@ -687,7 +813,8 @@ def apply_op(op, backup_dir):
     if op['op'] == 'move':
         dest = backup_dir / op['backup']
         dest.parent.mkdir(parents=True, exist_ok=True)
-        shutil.move(str(path), str(dest))
+        _injected(dict(op, op='evict'))  # test hook for a failed eviction
+        _evict(path, dest, op, save)
         return
     # evict-and-install ops: any pre-existing path is moved into the backup
     # BEFORE the new content lands, so a mid-op failure still leaves the
@@ -695,10 +822,12 @@ def apply_op(op, backup_dir):
     if path.exists() or path.is_symlink():
         rel = op.get('backup') or f'files/evicted-{os.getpid()}-{next(_EVICT_SEQ)}-{path.name}'
         op['backup'] = rel
+        if save:
+            save()  # journal the backup name before any content moves
         _injected(dict(op, op='evict'))  # test hook for a failed eviction
         dest = backup_dir / rel
         dest.parent.mkdir(parents=True, exist_ok=True)
-        shutil.move(str(path), str(dest))
+        _evict(path, dest, op, save)
     _injected(op)
     if op['op'] == 'copy':
         _stage_dir(Path(op['from']), path)
@@ -712,6 +841,22 @@ def apply_op(op, backup_dir):
         raise SystemExit(f'install-base: unknown op {op["op"]}')
 
 
+def _restore_resumable(op, path, stored):
+    """True when this op died mid-restore in a state that is safe to
+    continue: the new payload is already gone (restore_stage reached
+    'target_removed') and the recorded original either verifies in the
+    backup or was absent to begin with."""
+    if op.get('restore_stage') != 'target_removed':
+        return False
+    if path.exists() or path.is_symlink():
+        return False
+    before = op.get('before') or {}
+    if before.get('kind') == 'absent':
+        return True
+    return stored is not None and (stored.exists() or stored.is_symlink()) \
+        and describe(stored) == before
+
+
 def rollback(ops, backup_dir, verify, save=None):
     """Undo recorded ops, newest first. Returns (problems, errors).
 
@@ -721,10 +866,11 @@ def rollback(ops, backup_dir, verify, save=None):
     silently swallowed. Every op carries its recorded `before` state, so a
     path is deleted only when the original is safe in the backup (or the
     install itself confirmed the new content landed); an op whose eviction
-    never committed keeps whatever sits at its path. Each op restored is
-    flagged `restored` and persisted through `save`, so a retry continues
-    where a partial restore stopped instead of mistaking restored paths
-    for post-install edits.
+    never committed a verified backup keeps whatever sits at its path.
+    Each op restored is flagged `restored` and persisted through `save`,
+    and the intermediate 'target_removed' stage is journaled too, so a
+    retry continues where a partial restore stopped instead of mistaking
+    restored or mid-restore paths for post-install edits.
     """
     live = [op for op in reversed(ops)
             if (op.get('state') in ('active', 'done') or op.get('done'))
@@ -736,6 +882,21 @@ def rollback(ops, backup_dir, verify, save=None):
             if not after or after.get('sha256') in (None, 'absent'):
                 continue
             path = Path(op['path'])
+            stored = backup_dir / op['backup'] if op.get('backup') else None
+            if op.get('restore_stage'):
+                if _restore_resumable(op, path, stored):
+                    continue  # last restore died mid-op; resume below
+                if describe(path) == after:
+                    # the recorded stage never landed (died before/inside
+                    # remove); restart this op from scratch
+                    op.pop('restore_stage', None)
+                    if save:
+                        save()
+                    continue
+                problems.append(f'{path}: a previous restore was interrupted '
+                                'and neither the installed state nor the '
+                                'original verifies; manual recovery needed')
+                continue
             if describe(path) != after:
                 problems.append(f'{path} changed since install '
                                 f"(was {after['kind']} {after['sha256'][:12]}…)")
@@ -758,9 +919,13 @@ def rollback(ops, backup_dir, verify, save=None):
                     save()
                 continue
             stored = backup_dir / op['backup'] if op.get('backup') else None
-            stored_ok = stored is not None \
-                and (stored.exists() or stored.is_symlink())
             before = op.get('before') or {}
+            # 'backup exists' is not proof of a usable backup: it must have
+            # been journaled as committed during apply, or verify against
+            # the recorded original right now.
+            stored_ok = stored is not None \
+                and (stored.exists() or stored.is_symlink()) \
+                and (op.get('backup_committed') or describe(stored) == before)
             if op.get('state') != 'done' and not stored_ok \
                     and before.get('kind') != 'absent':
                 # the eviction never committed a backup: whatever sits at
@@ -768,26 +933,38 @@ def rollback(ops, backup_dir, verify, save=None):
                 # deleted here. Identical means intact and already restored.
                 if describe(path) == before:
                     op['restored'] = True
+                    op.pop('restore_stage', None)
                     if save:
                         save()
                 else:
                     errors.append(f'{path}: content differs from the recorded '
-                                  'original but no backup was committed; '
-                                  'left in place')
+                                  'original but no complete backup was '
+                                  'committed; left in place')
                 continue
             if op.get('backup') and not stored_ok and op.get('state') == 'done':
                 errors.append(f'{path}: recorded backup {op["backup"]} is '
-                              'missing; left in place')
+                              'missing or incomplete; left in place')
                 continue
+            op['restore_stage'] = 'restoring'
+            if save:
+                save()
             if path.exists() or path.is_symlink():
                 remove(path)
+            op['restore_stage'] = 'target_removed'
+            if save:
+                save()
             if stored_ok:
                 path.parent.mkdir(parents=True, exist_ok=True)
-                shutil.move(str(stored), str(path))
+                _injected(dict(op, op='restore'))  # test hook
+                _move_verified(stored, path,
+                               before if before.get('kind') != 'absent' else None)
+            op.pop('restore_stage', None)
             op['restored'] = True
             if save:
                 save()
         except OSError as exc:
+            if save:
+                save()  # persist restore_stage so a retry can resume
             errors.append(f'{path}: {exc}')
     return problems, errors
 
@@ -806,12 +983,13 @@ def run_ops(ops, backup_dir, manifest, manifest_path):
     """Execute ops with a per-transition atomic journal; roll back on failure."""
     def save():
         write_json_atomic(manifest_path, manifest)
+    manifest.setdefault('tx_state', 'applying')
     try:
         for op in ops:
             op['before'] = describe(Path(op['path']))
             op['state'] = 'active'
             save()  # journal before acting
-            apply_op(op, backup_dir)
+            apply_op(op, backup_dir, save)
             op['state'] = 'done'
             # mkdir: later ops fill the directory, so a content digest here
             # would false-positive as 'edited'; presence is all we verify
@@ -819,11 +997,13 @@ def run_ops(ops, backup_dir, manifest, manifest_path):
                 else describe(Path(op['path']))
             save()
         manifest['completed'] = True
+        manifest['tx_state'] = 'applied'
         save()
     except Exception as exc:
         problems, errors = rollback(ops, backup_dir, verify=False, save=save)
         if errors:
             manifest['rolled_back'] = False
+            manifest['tx_state'] = 'rollback-failed'
             manifest['rollback_errors'] = errors
             write_json_atomic(manifest_path, manifest)
             raise SystemExit(
@@ -831,6 +1011,7 @@ def run_ops(ops, backup_dir, manifest, manifest_path):
                 f'rollback itself FAILED for {len(errors)} path(s); manual recovery needed:\n  '
                 + '\n  '.join(errors) + f'\nbackup kept at {backup_dir}')
         manifest['rolled_back'] = True
+        manifest['tx_state'] = 'rolled-back'
         write_json_atomic(manifest_path, manifest)
         raise SystemExit(f'\ninstall-base: failed at {op["op"]} {op["path"]}: {exc}\n'
                          f'previous state restored; backup kept at {backup_dir}')
@@ -841,24 +1022,41 @@ def do_rollback(backup_dir):
     if not manifest_path.is_file():
         raise SystemExit(f'install-base: no manifest in {backup_dir}')
     manifest = json.loads(manifest_path.read_text())
-    if manifest.get('rolled_back'):
+    if manifest.get('rolled_back') or manifest.get('tx_state') == 'rolled-back':
         print(f'{backup_dir}: already rolled back.')
         return
-    # the same mutual exclusion as the install: project-mode restores run
-    # under the project lock, user-mode under a lock inside the backup dir
-    if manifest.get('mode') == 'project':
+    # project installs and project uninstalls are the same transaction
+    # scope: both restore under the project-root mutex, and the journal is
+    # re-read only after the lock is taken. User-mode restores lock inside
+    # their own backup dir.
+    if manifest.get('mode') in ('project', 'uninstall'):
         lock_root = Path(manifest.get('root', backup_dir.parent))
         guard = Mutex(lock_root / (LOCK_NAME + '.lock'))
     else:
         guard = Mutex(backup_dir / 'manifest.json.lock')
     with guard:
+        manifest = json.loads(manifest_path.read_text())
+        if manifest.get('rolled_back') or manifest.get('tx_state') == 'rolled-back':
+            print(f'{backup_dir}: already rolled back.')
+            return
         def save():
             write_json_atomic(manifest_path, manifest)
+        restoring = any(o.get('restored') or o.get('restore_stage')
+                        for o in manifest['ops'])
+        if restoring:
+            manifest['tx_state'] = 'rolling-back'
+            save()
         problems, errors = rollback(manifest['ops'], backup_dir, verify=True,
                                   save=save)
+        restoring = any(o.get('restored') or o.get('restore_stage')
+                        for o in manifest['ops'])
         if problems:
             manifest['rollback_attempted'] = datetime.now().isoformat(timespec='seconds')
             manifest['rollback_errors'] = problems
+            if restoring or not manifest.get('completed'):
+                manifest['tx_state'] = 'rollback-failed'
+            else:
+                manifest['tx_state'] = 'rollback-refused'
             write_json_atomic(manifest_path, manifest)
             raise SystemExit('install-base: refusing to roll back; edits made after the '
                              'install would be lost:\n  ' + '\n  '.join(problems) +
@@ -866,22 +1064,75 @@ def do_rollback(backup_dir):
         if errors:
             manifest['rollback_attempted'] = datetime.now().isoformat(timespec='seconds')
             manifest['rollback_errors'] = errors
+            manifest['tx_state'] = 'rollback-failed'
             write_json_atomic(manifest_path, manifest)
             raise SystemExit('install-base: rollback incomplete; not marked as restored. '
                              'Fix the causes and re-run --rollback:\n  ' + '\n  '.join(errors))
         manifest['rolled_back'] = True
+        manifest['tx_state'] = 'rolled-back'
         write_json_atomic(manifest_path, manifest)
     print(f'Restored from {backup_dir}.')
+
+
+def verify_source(source_json):
+    """Verify an installed ask-me payload's recorded snapshot content.
+
+    Reads source.json (accepts the file or its skill dir), finds the
+    snapshot root it names by walking up from the install location, and
+    checks the completion marker plus every file recorded in
+    `file_digests`. Returns a list of problems ([] means verified).
+    """
+    sj = Path(source_json)
+    if sj.is_dir():
+        sj = sj / 'source.json'
+    if not sj.is_file():
+        raise SystemExit(f'install-base: no source.json at {source_json}')
+    try:
+        meta = json.loads(sj.read_text())
+    except (OSError, json.JSONDecodeError) as exc:
+        raise SystemExit(f'install-base: cannot read {sj}: {exc}')
+    snap_rel = meta.get('snapshot_root')
+    commit = meta.get('commit')
+    digests = meta.get('file_digests')
+    if not isinstance(snap_rel, str) or not commit or not isinstance(digests, dict):
+        raise SystemExit(f'install-base: {sj} lacks snapshot_root, commit '
+                         'or file_digests')
+    snap = None
+    for parent in sj.resolve().parents:
+        cand = parent / snap_rel
+        if (cand / SNAP_MARKER).is_file():
+            snap = cand
+            break
+    if snap is None:
+        raise SystemExit(f'install-base: snapshot {snap_rel} not found '
+                         f'above {sj}')
+    problems = []
+    marker = (snap / SNAP_MARKER).read_text().strip()
+    if marker != commit:
+        problems.append(f'{SNAP_MARKER} records {marker[:12]}, '
+                        f'expected {commit[:12]}')
+    for rel, want in sorted(digests.items()):
+        if PurePosixPath(rel).is_absolute() or '..' in PurePosixPath(rel).parts:
+            problems.append(f'{rel}: unsafe recorded path')
+            continue
+        f = snap / rel
+        if not f.is_file() or f.is_symlink():
+            problems.append(f'{rel}: missing from snapshot')
+        elif _file_sha256(f) != want:
+            problems.append(f'{rel}: content differs from the recorded sha256')
+    return problems
 
 
 # ------------------------------------------------------------------- lock
 
 def read_lock(root):
-    """Read .skills-lock.json, validating schema and path bounds.
+    """Read .skills-lock.json, validating the full schema and path bounds.
 
     The lock is an execution input -- its `targets`/`links` drive file
-    removals -- so every entry must be a relative path inside the project,
-    and its ancestors must not resolve through a symlink to outside.
+    removals -- so it is validated as strictly as a program argument: only
+    version 1, every provenance/digest field present and well-formed, and
+    every managed path a <dir>/<name> relative path inside the project
+    whose ancestors never resolve outside it.
     """
     path = root / LOCK_NAME
     if not path.is_file():
@@ -890,25 +1141,62 @@ def read_lock(root):
         lock = json.loads(path.read_text())
     except (OSError, json.JSONDecodeError) as exc:
         raise SystemExit(f'install-base: cannot read {LOCK_NAME}: {exc}')
+
+    def bad(what):
+        raise SystemExit(f'install-base: {LOCK_NAME}: {what}')
+
+    version = lock.get('version')
+    if not isinstance(version, int) or isinstance(version, bool) or version != 1:
+        bad(f'unsupported version {version!r} (this installer reads version 1)')
     skills = lock.get('skills')
     if not isinstance(skills, dict):
-        raise SystemExit(f'install-base: {LOCK_NAME}: "skills" must be an object')
+        bad('"skills" must be an object')
     for name, rec in skills.items():
+        check_name(name)
         if not isinstance(rec, dict):
-            raise SystemExit(f'install-base: {LOCK_NAME}: {name!r} must be an object')
-        for key in ('targets', 'links', 'required_by'):
-            val = rec.get(key)
-            if not isinstance(val, list) \
-                    or not all(isinstance(v, str) for v in val):
-                raise SystemExit(f'install-base: {LOCK_NAME}: {name}.{key} '
-                                 'must be a list of strings')
-        for rel in rec['targets'] + rec['links']:
+            bad(f'{name!r} must be an object')
+        repo = rec.get('source_repo')
+        if not isinstance(repo, str) or not repo:
+            bad(f'{name}.source_repo must be a non-empty string')
+        spath = rec.get('source_path')
+        spp = PurePosixPath(spath) if isinstance(spath, str) else PurePosixPath('.')
+        if not isinstance(spath, str) or not spath or spp.is_absolute() \
+                or '..' in spp.parts:
+            bad(f'{name}.source_path must be a relative path inside the repository')
+        commit = rec.get('source_commit')
+        if not isinstance(commit, str) or not re.fullmatch(r'[0-9a-f]{40}', commit):
+            bad(f'{name}.source_commit must be a full commit SHA')
+        digest = rec.get('sha256')
+        if not isinstance(digest, str) or not re.fullmatch(r'[0-9a-f]{64}', digest):
+            bad(f'{name}.sha256 must be a full sha256 hex digest')
+        if not (rec.get('upstream') is None or isinstance(rec.get('upstream'), str)):
+            bad(f'{name}.upstream must be a string or null')
+        owners = rec.get('required_by')
+        if not isinstance(owners, list) or not owners \
+                or not all(isinstance(o, str) and NAME_RE.fullmatch(o) for o in owners):
+            bad(f'{name}.required_by must be a non-empty list of names')
+        targets, links = rec.get('targets'), rec.get('links')
+        if not isinstance(targets, list) or not targets \
+                or not all(isinstance(t, str) for t in targets):
+            bad(f'{name}.targets must be a non-empty list of strings')
+        if not isinstance(links, list) \
+                or not all(isinstance(l, str) for l in links):
+            bad(f'{name}.links must be a list of strings')
+        for rel in targets + links:
             p = PurePosixPath(rel)
             if not rel or p.is_absolute() or '..' in p.parts:
-                raise SystemExit(f'install-base: {LOCK_NAME}: {name} lists '
-                                 f'unsafe path {rel!r}')
+                bad(f'{name} lists unsafe path {rel!r}')
+            # managed payloads live at <something>/<name>; a lock entry may
+            # never name a project-root file or an internal directory
+            if len(p.parts) < 2 or p.name != name:
+                bad(f'{name} lists path {rel!r} that is not a <dir>/{name} '
+                    'managed path')
+            if any(part == '.git' or part == SNAP_DIRNAME
+                   or part.startswith(BACKUP_PREFIX) for part in p.parts):
+                bad(f'{name} lists path {rel!r} inside a snapshot, backup '
+                    'or .git directory')
             within((root / rel).parent, root, f'{LOCK_NAME} entry {rel!r}')
-    return {'version': lock.get('version', 1), 'skills': skills}
+    return {'version': 1, 'skills': skills}
 
 
 class Mutex:
@@ -938,8 +1226,13 @@ class Mutex:
 def pending_journals(root):
     """Backup manifests of transactions that never finished nor rolled back.
 
-    Manifests written before the `completed` marker existed count as
-    finished when every op reached 'done'.
+    `tx_state` tracks the lifecycle (applying -> applied -> rolling-back
+    -> rolled-back / rollback-failed / rollback-refused); anything short of
+    'rolled-back' with evidence of an unfinished apply or a started but
+    incomplete restore blocks new transactions. Legacy manifests without
+    `tx_state` fall back to the `completed`/`rolled_back` markers, and a
+    manifest written before `completed` existed counts as finished only
+    when every op reached 'done'.
     """
     pending = []
     for m in root.rglob(f'{BACKUP_PREFIX}*/manifest.json'):
@@ -948,11 +1241,20 @@ def pending_journals(root):
         except (OSError, json.JSONDecodeError):
             continue
         ops = data.get('ops')
-        if not ops or data.get('completed') or data.get('rolled_back'):
+        if not ops:
             continue
-        finished = all(o.get('state') == 'done' or o.get('done') for o in ops)
-        if not finished:
+        if data.get('rolled_back') is True or data.get('tx_state') == 'rolled-back':
+            continue
+        tx = data.get('tx_state')
+        restoring = any(o.get('restored') or o.get('restore_stage') for o in ops)
+        if tx in ('applying', 'rolling-back', 'rollback-failed') \
+                or data.get('rolled_back') is False or restoring:
             pending.append(m.parent)
+            continue
+        if not data.get('completed'):
+            finished = all(o.get('state') == 'done' or o.get('done') for o in ops)
+            if not finished:
+                pending.append(m.parent)
     return sorted(pending)
 
 
@@ -987,15 +1289,18 @@ def seq_backup(seq, path):
     return rel
 
 
-def plan(targets, entries, snap, link, retire, retired):
+def plan(targets, entries, snap, link, retire, retired, payloads=None):
     """User-level plan: one entity per entry at every target.
 
     Names being explicitly installed are dropped from the retire list --
-    the install's own evict step replaces them exactly once.
+    the install's own evict step replaces them exactly once. `payloads`
+    maps member names to staged payload dirs (snapshot copy plus injected
+    legal files); unmapped entries link straight into the snapshot.
     """
     actions, ops = [], []
     seq = [0]
     installed = {e['name'] for e in entries}
+    payloads = payloads or {}
     for target in targets:
         if not target.exists():
             ops.append({'op': 'mkdir', 'path': str(target)})
@@ -1009,7 +1314,7 @@ def plan(targets, entries, snap, link, retire, retired):
                     ops.append({'op': 'move', 'path': str(stale), 'backup': seq_backup(seq, stale)})
                     actions.append((target, 'retire', f'{stale} -> <backup>/{stale.name}'))
         for entry in entries:
-            src = snap / skill_dir(entry)
+            src = payloads.get(entry['name'], snap / skill_dir(entry))
             dest = target / entry['name']
             if not src.is_dir():
                 actions.append((target, 'skip', f"{entry['name']}: source missing ({src})"))
@@ -1092,6 +1397,15 @@ def plan_project(root, primaries, link_roots, members, snap, lock, owner,
         rec = skills.get(name)
         want = digests[name]
         if rec:
+            # a different collection repo means a different entity entirely:
+            # same path and content is not enough to share it or merge
+            # owners across collections without an explicit --force
+            if rec.get('source_repo') != meta['collection_id'] and not force:
+                raise SystemExit(
+                    f"install-base: '{name}' was installed from collection "
+                    f"{rec.get('source_repo')!r}, but this install comes from "
+                    f"{meta['collection_id']!r}; refusing to mix entities "
+                    'across collection repos without --force')
             # a different source path or upstream, or a different payload
             # outside an update, means a different entity under the same name
             if rec['source_path'] != m['path'] \
@@ -1260,6 +1574,9 @@ def main():
     mode.add_argument('--apply', action='store_true', help='perform the install')
     mode.add_argument('--rollback', type=Path, metavar='BACKUP_DIR',
                       help='restore a previous install from its backup directory')
+    mode.add_argument('--verify-source', type=Path, metavar='SOURCE_JSON',
+                      help='verify an installed ask-me snapshot against its '
+                           'recorded digests (path to source.json or its dir)')
     parser.add_argument('--project', action='store_true',
                         help='copy into ./.agents/skills (+ ./.claude/skills links) with a lock')
     parser.add_argument('--suite', help='install a suite from suites/<name>.json (project only)')
@@ -1282,6 +1599,13 @@ def main():
 
     if args.rollback:
         do_rollback(args.rollback.expanduser().resolve())
+        return
+    if args.verify_source:
+        problems = verify_source(args.verify_source.expanduser().resolve())
+        if problems:
+            raise SystemExit('install-base: source verification failed:\n  '
+                             + '\n  '.join(problems))
+        print('source verified.')
         return
     if args.suite and not args.project:
         parser.error('--suite requires --project')
@@ -1316,7 +1640,8 @@ def main():
             make_backup_dir(backup_dir)
             manifest_path = backup_dir / 'manifest.json'
             manifest = {'created': ts, 'mode': 'uninstall', 'root': str(root),
-                        'suite': args.uninstall, 'ops': ops}
+                        'suite': args.uninstall, 'ops': ops,
+                        'tx_state': 'applying'}
             write_json_atomic(manifest_path, manifest)
             run_ops(ops, backup_dir, manifest, manifest_path)
             print(f'\nDone. Backup: {backup_dir} (restore with --rollback {backup_dir})')
@@ -1398,6 +1723,11 @@ def main():
     guard = Mutex(root / (LOCK_NAME + '.lock')) if args.project \
         else contextlib.nullcontext()
     with guard:
+        meta = {'repo_map': repo_map, 'source': source, 'sha': sha,
+                'snap': snap, 'collection_id': collection_repo(source),
+                'entries': skills,
+                'license_map': license_map_for(
+                    git_show(source, sha, '.sync/upstreams.json'))}
         if args.project:
             if args.apply:
                 pending = pending_journals(root)
@@ -1408,10 +1738,6 @@ def main():
                         + '\n  '.join(str(p) for p in pending))
             lock = read_lock(root)
             owner = args.suite or EXPLICIT
-            meta = {'repo_map': repo_map, 'source': source, 'sha': sha,
-                    'snap': snap, 'collection_id': collection_repo(source),
-                    'license_map': license_map_for(
-                        git_show(source, sha, '.sync/upstreams.json'))}
             stage_root = Path(tempfile.mkdtemp(prefix='.ib-payload-',
                                                dir=str(snap_root)))
             payloads = stage_payloads(members, snap, meta, stage_root)
@@ -1421,7 +1747,9 @@ def main():
                 meta=meta, payloads=payloads)
             method = 'copy+links'
         else:
-            actions, ops = plan(targets, entries, snap, True, True, retired)
+            payloads = stage_user_payloads(members, snap, meta, snap_root, sha)
+            actions, ops = plan(targets, entries, snap, True, True, retired,
+                                payloads)
             method = 'symlink'
 
         try:
@@ -1443,7 +1771,8 @@ def main():
             manifest_path = backup_dir / 'manifest.json'
             manifest = {'created': ts, 'source': str(source), 'commit': sha,
                         'mode': 'project' if args.project else 'user',
-                        'root': str(root), 'ops': ops}
+                        'root': str(root), 'ops': ops,
+                        'tx_state': 'applying'}
             write_json_atomic(manifest_path, manifest)
             run_ops(ops, backup_dir, manifest, manifest_path)
             print(f'\nDone. Backup: {backup_dir} (restore with --rollback {backup_dir})')

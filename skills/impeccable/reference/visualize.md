@@ -1,3 +1,5 @@
+<!-- Modified from pbakaus/impeccable (Apache-2.0) for this repository; see MODIFICATIONS.md. -->
+
 # Visualize: Direction Comps & Asset Production
 
 Load this from [new-work.md](new-work.md) on a comp-led build, when an image-generation tool is available (a harness-native image tool). A code-led contract skips this file by design, not by drift; do not load it then. PRODUCT.md is a precondition; DESIGN.md is one only on an established world, since a new or replacement world writes it at the finish. The mode file's COMPS rules govern these comps together with this file and win where they conflict. New-work has already resolved the visual world; this file must not reopen it. A surface-scope structure round that already put three visualized cards before the user (new-work.md, established world) has discharged this round: the locked card's comp is the approved comp, so record the approval and continue at After approval; generate nothing new.

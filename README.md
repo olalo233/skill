@@ -49,7 +49,7 @@ npx skills update html show-me eli5
 
 ## 上游自动合并
 
-> **周更发布未启用。** 下方描述的每周自动合并/发布链路当前不在运行（workflow 未启用）；`.sync/upstreams.json` 的基线仍需人工维护，问题修复见后续 PR。
+> **周更发布未启用。** 该工作流已在代码中禁用：`schedule` 触发器已被注释，job 以 `if: false` 短路，包括手动 `workflow_dispatch` 在内的任何触发都不会执行同步或直推 `main`。在后续 PR 完成二进制同步与 PR 人审发布链路之前，不得在仓库设置或代码中重新启用。`.sync/upstreams.json` 的基线仍需人工维护。
 
 每周一 03:23 UTC（香港时间 11:23），GitHub Actions 获取 `.sync/upstreams.json` 登记的上游目录，以记录的 commit 为基线进行三方合并。
 

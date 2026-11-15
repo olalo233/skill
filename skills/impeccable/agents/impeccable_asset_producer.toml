@@ -1,3 +1,4 @@
+# Modified from pbakaus/impeccable (Apache-2.0); see ../MODIFICATIONS.md.
 name = "impeccable_asset_producer"
 description = "Produces clean reusable raster assets from approved Impeccable mock references without redesigning the direction."
 model_reasoning_effort = "medium"

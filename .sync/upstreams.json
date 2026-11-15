@@ -212,7 +212,12 @@
         }
       ],
       "vendor_seeded": true,
-      "ref": "main"
+      "ref": "main",
+      "derived_paths": [
+        {
+          "destination": "skills/system-design"
+        }
+      ]
     },
     {
       "repo": "bmad-code-org/BMAD-METHOD",
@@ -235,7 +240,12 @@
         }
       ],
       "vendor_seeded": true,
-      "ref": "main"
+      "ref": "main",
+      "derived_paths": [
+        {
+          "destination": "skills/ux-spec"
+        }
+      ]
     }
   ]
 }

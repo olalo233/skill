@@ -1,3 +1,5 @@
+<!-- Modified from pbakaus/impeccable (Apache-2.0) for this repository; see MODIFICATIONS.md. -->
+
 # Persuade and Experience
 
 The two sections below are the mode rules new-work.md refers to; read them directly. On these surfaces the design is what the visitor judges, so the world may own and structure the page.

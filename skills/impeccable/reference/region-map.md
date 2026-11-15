@@ -1,3 +1,5 @@
+<!-- Modified from pbakaus/impeccable (Apache-2.0) for this repository; see MODIFICATIONS.md. -->
+
 # Region map
 
 A region map names what is actually visible in the approved comp before asset production. It is not a page build or an asset approval. The map is written by hand, reading the comp image directly; the build thread both authors and verifies it.
