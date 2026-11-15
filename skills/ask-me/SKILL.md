@@ -30,7 +30,7 @@ Route to skills through this repository's index. Recommend only; never install o
 - `design` — turning a vague idea into decided work: clarify (grill-with-docs), spec (to-spec), UX spec into docs/ux/ (ux-spec), system design (system-design), interface contracts (api-and-interface-design), tickets (to-tickets). Includes the `matt-plan` sub-suite; install with `bin/install-design`.
 - `matt-dev` — implementing the tickets: implement, tdd, code-review, diagnosing-bugs, matt-flow. Includes `matt-plan`, so members shared with `design` land only once and survive either suite's uninstall; install with `bin/install-matt-dev`.
 - `matt-plan` — the shared planning half alone (clarify/spec/tickets and their primitives). Rarely the right choice on its own; prefer `design` or `matt-dev`.
-- `ui-kit` — visual direction and prototypes: impeccable (PRODUCT.md/DESIGN.md, critique/audit; the detector CLI is an optional extra) and prototype. dataviz is pending source verification. Install with `bin/install-ui-kit`.
+- `ui-kit` — visual direction, modern web platform, UI behaviors, and prototypes: impeccable (PRODUCT.md/DESIGN.md, critique/audit; the detector CLI is an optional extra), modern-web-guidance (Baseline/modern HTML, CSS, and client-side JS guides), ui-sdk (accessible UI behaviors and components across React/Vue/Svelte/Solid/web components), and prototype. dataviz is pending source verification. Install with `bin/install-ui-kit`.
 - `pstack` — a Cursor-native plugin vendored whole (subagents, sibling paths, automations). On Cursor, recommend enabling the native plugin rather than reading the vendored copy. Elsewhere the text still reads, but features degrade; say so when recommending.
 
 ## Notes

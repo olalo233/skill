@@ -246,6 +246,38 @@
           "destination": "skills/ux-spec"
         }
       ]
+    },
+    {
+      "repo": "GoogleChrome/modern-web-guidance",
+      "revision": "4dd968349e54ca45a05dd5c818fb035c9054b022",
+      "license": "Apache-2.0 AND CC-BY-4.0",
+      "paths": [
+        {
+          "source": "skills/modern-web-guidance",
+          "destination": "skills/modern-web-guidance"
+        },
+        {
+          "source": "LICENSE",
+          "destination": "licenses/modern-web-guidance-Apache-2.0.txt"
+        }
+      ],
+      "ref": "main"
+    },
+    {
+      "repo": "vercel-labs/ui",
+      "revision": "e41fcbaef36c91489bb938896e0b9fa93106f51f",
+      "license": "Apache-2.0",
+      "paths": [
+        {
+          "source": "packages/core/skills/ui-sdk",
+          "destination": "skills/ui-sdk"
+        },
+        {
+          "source": "LICENSE",
+          "destination": "licenses/vercel-ui-Apache-2.0.txt"
+        }
+      ],
+      "ref": "main"
     }
   ]
 }

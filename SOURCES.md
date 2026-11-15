@@ -79,6 +79,18 @@ Only the narrow review skill is bundled. The always-on Ponytail skill is not inc
 - Repository: `bmad-code-org/BMAD-METHOD`; only `skills/bmad-ux` is vendored at `vendor/bmad/` as the template source for `skills/ux-spec` (a local skill credited MIT inside the file). The BMAD framework itself is not installed.
 - License: MIT, preserved in `licenses/bmad-method-MIT.txt` and `vendor/bmad/LICENSE`.
 
+### Google Chrome Modern Web Guidance
+
+- Repository: `GoogleChrome/modern-web-guidance`; upstream path `skills/modern-web-guidance`.
+- Synced verbatim to `skills/modern-web-guidance/` (`paths` in `.sync/upstreams.json`), including all bundled `guides/` and upstream's original model-invocable `description`.
+- License: Apache-2.0 for code and CC-BY-4.0 for `guides/` documentation (with MDN/W3C/WHATWG/IETF attribution), preserved in `licenses/modern-web-guidance-Apache-2.0.txt`, `skills/modern-web-guidance/LICENSE`, and `skills/modern-web-guidance/NOTICE.md`.
+
+### Vercel UI SDK
+
+- Repository: `vercel-labs/ui`; upstream path `packages/core/skills/ui-sdk`.
+- Synced verbatim to `skills/ui-sdk/` (`paths` in `.sync/upstreams.json`), keeping upstream's `SKILL.md` and `references/` unchanged.
+- License: Apache-2.0, preserved in `licenses/vercel-ui-Apache-2.0.txt` and `skills/ui-sdk/LICENSE`.
+
 ## Base suite and invocation policy
 
 - `skills/ask-me/` is a local skill: index router that recommends, then waits. User-invoked only.

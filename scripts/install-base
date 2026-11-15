@@ -639,17 +639,35 @@ def stage_user_payloads(members, snap, meta, snap_root, sha):
     for name, (mpath, extra) in need.items():
         dst = final / name
         tmp = final / f'.{name}.ibstage-{os.getpid()}'
+        old = final / f'.{name}.ibold-{os.getpid()}'
         if tmp.exists():
             shutil.rmtree(tmp)
+        if old.exists():
+            shutil.rmtree(old)
         try:
             shutil.copytree(str(snap / mpath), str(tmp), symlinks=True)
             for f, dest_name in extra:
                 shutil.copy2(str(f), str(tmp / dest_name))
             if name == 'ask-me':
                 _write_askme_provenance(tmp, mpath, snap, meta)
-            if dst.exists():
-                shutil.rmtree(dst)
-            os.rename(tmp, dst)
+            if dst.is_dir() and not dst.is_symlink() \
+                    and tree_digest(dst) == tree_digest(tmp):
+                shutil.rmtree(tmp)
+                continue
+            if dst.exists() or dst.is_symlink():
+                os.rename(dst, old)
+            try:
+                os.rename(tmp, dst)
+            except BaseException:
+                if (old.exists() or old.is_symlink()) \
+                        and not (dst.exists() or dst.is_symlink()):
+                    try:
+                        os.rename(old, dst)
+                    except OSError:
+                        pass
+                raise
+            if old.exists() or old.is_symlink():
+                remove(old)
         except BaseException:
             shutil.rmtree(tmp, ignore_errors=True)
             raise
@@ -747,7 +765,7 @@ def _evict(path, dest, op, save=None):
             save()
 
 
-def _move_verified(src, dst, want):
+def _move_verified(src, dst, want, on_landed=None):
     """Move src to dst without ever leaving a half-copied payload at dst.
 
     Rename when possible; otherwise copy into a sibling temp, verify the
@@ -769,7 +787,12 @@ def _move_verified(src, dst, want):
             if tmp.exists() or tmp.is_symlink():
                 remove(tmp)
             raise
+        if on_landed:
+            on_landed()
         remove(src)
+    else:
+        if on_landed:
+            on_landed()
 
 
 def _stage_dir(src, path):
@@ -841,11 +864,24 @@ def apply_op(op, backup_dir, save=None):
         raise SystemExit(f'install-base: unknown op {op["op"]}')
 
 
+def _restore_target_landed(op, path):
+    """True when a previous restore already placed and verified the original
+    payload at `path`, but died before finishing backup cleanup or saving
+    `restored=True`."""
+    before = op.get('before') or {}
+    return bool(op.get('restore_stage')) \
+        and before.get('kind') not in (None, 'absent') \
+        and describe(path) == before
+
+
 def _restore_resumable(op, path, stored):
     """True when this op died mid-restore in a state that is safe to
-    continue: the new payload is already gone (restore_stage reached
-    'target_removed') and the recorded original either verifies in the
-    backup or was absent to begin with."""
+    continue: either the original is already back in place at `path`, or the
+    new payload is already gone (restore_stage reached 'target_removed') and
+    the recorded original either verifies in the backup or was absent to
+    begin with."""
+    if _restore_target_landed(op, path):
+        return True
     if op.get('restore_stage') != 'target_removed':
         return False
     if path.exists() or path.is_symlink():
@@ -920,6 +956,14 @@ def rollback(ops, backup_dir, verify, save=None):
                 continue
             stored = backup_dir / op['backup'] if op.get('backup') else None
             before = op.get('before') or {}
+            if _restore_target_landed(op, path):
+                if stored is not None and (stored.exists() or stored.is_symlink()):
+                    remove(stored)
+                op.pop('restore_stage', None)
+                op['restored'] = True
+                if save:
+                    save()
+                continue
             # 'backup exists' is not proof of a usable backup: it must have
             # been journaled as committed during apply, or verify against
             # the recorded original right now.
@@ -956,8 +1000,13 @@ def rollback(ops, backup_dir, verify, save=None):
             if stored_ok:
                 path.parent.mkdir(parents=True, exist_ok=True)
                 _injected(dict(op, op='restore'))  # test hook
+                def _mark_landed(cur=op):
+                    cur['restore_stage'] = 'target_restored'
+                    if save:
+                        save()
                 _move_verified(stored, path,
-                               before if before.get('kind') != 'absent' else None)
+                               before if before.get('kind') != 'absent' else None,
+                               on_landed=_mark_landed)
             op.pop('restore_stage', None)
             op['restored'] = True
             if save:
@@ -1151,10 +1200,17 @@ def read_lock(root):
     skills = lock.get('skills')
     if not isinstance(skills, dict):
         bad('"skills" must be an object')
+    required_keys = {
+        'source_repo', 'source_path', 'source_commit', 'upstream',
+        'sha256', 'required_by', 'targets', 'links',
+    }
     for name, rec in skills.items():
         check_name(name)
         if not isinstance(rec, dict):
             bad(f'{name!r} must be an object')
+        missing = sorted(required_keys - set(rec.keys()))
+        if missing:
+            bad(f'{name} missing required key(s): {", ".join(missing)}')
         repo = rec.get('source_repo')
         if not isinstance(repo, str) or not repo:
             bad(f'{name}.source_repo must be a non-empty string')
@@ -1409,7 +1465,7 @@ def plan_project(root, primaries, link_roots, members, snap, lock, owner,
             # a different source path or upstream, or a different payload
             # outside an update, means a different entity under the same name
             if rec['source_path'] != m['path'] \
-                    or ('upstream' in rec and rec['upstream'] != upstream) \
+                    or rec['upstream'] != upstream \
                     or (not update and rec['sha256'] != want):
                 raise SystemExit(
                     f"install-base: '{name}' is already installed from "

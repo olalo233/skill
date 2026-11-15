@@ -39,6 +39,8 @@ present as sibling directories; they do not need to be read.
 | Skill | Summary | Path | Depends |
 | --- | --- | --- | --- |
 | `impeccable` | Design, critique, audit, and polish frontend interfaces: websites, product UI, components, forms, onboarding, empty states, iOS/Android screens. | `skills/impeccable/SKILL.md` |  |
+| `modern-web-guidance` | Search tool for modern web development best practices. | `skills/modern-web-guidance/SKILL.md` |  |
+| `ui-sdk` | Builds interfaces with ui-sdk in React, Vue, Svelte, Solid or web components. | `skills/ui-sdk/SKILL.md` |  |
 
 ## Addy Osmani agent-skills (vendored subset at vendor/addy)
 

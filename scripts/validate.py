@@ -26,6 +26,8 @@ for relative in sorted(set(filter(None, files))):
     }
     if relative.startswith('vendor/'):
         del checks['personal home path']  # verbatim upstream text may use /Users/you examples
+    if relative == 'skills/modern-web-guidance/guides/security/local-network-access.md':
+        del checks['private address']  # verbatim W3C Local Network Access guide cites RFC 1918 ranges
     for label, pattern in checks.items():
         if re.search(pattern, content, re.M): errors.append(f'{relative}: {label}')
 

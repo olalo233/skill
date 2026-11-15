@@ -1203,6 +1203,9 @@ class LockAndSourceTests(unittest.TestCase):
                 {'version': 1, 'skills': {'x': {k: v for k, v in valid.items()
                                               if k not in ('sha256', 'source_commit',
                                                            'source_repo')}}},
+                # missing 'upstream' key (even though null is valid when present)
+                {'version': 1, 'skills': {'x': {k: v for k, v in valid.items()
+                                              if k != 'upstream'}}},
                 # leaf directory name does not match the skill name
                 {'version': 1, 'skills': {'x': dict(valid, targets=['.agents/skills/other'])}},
                 # project-root file is not a managed payload path
@@ -1300,6 +1303,137 @@ class LockAndSourceTests(unittest.TestCase):
                 self.assertTrue((target / name / 'LICENSE').is_file(), name)
             self.assertIn('Matt Pocock',
                           (target / 'tdd/LICENSE').read_text())
+
+    def test_stage_user_payloads_preserves_live_payload_on_reinstall_and_failure(self):
+        """Sol fix5 P1 #1: re-staging an unchanged user payload reuses dst in
+        place; if dst drifted and the replacement rename fails, the previous
+        dst is restored so existing user symlinks never dangle."""
+        mod = load_ib()
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp).resolve()
+            src, head = make_clone(base)
+            target = base / 'home/skills'
+            self.assertEqual(self.run_install(
+                '--apply', '--source', str(src), '--ref', head,
+                '--target', str(target), '--skill', 'ask-me').returncode, 0)
+            link = target / 'ask-me'
+            self.assertTrue(link.is_symlink())
+            dst = Path(os.readlink(link))
+            self.assertTrue((dst / 'SKILL.md').is_file())
+            ino_before = (dst / 'SKILL.md').stat().st_ino
+
+            snap_root = target.parent / mod.SNAP_DIRNAME
+            snap = snap_root / head
+            meta = {
+                'collection_id': mod.collection_repo(src),
+                'sha': head,
+                'entries': json.loads((snap / 'index.json').read_text())['skills'],
+                'repo_map': mod.load_repo_map(
+                    mod.git_show(src, head, '.sync/upstreams.json')),
+                'license_map': mod.license_map_for(
+                    mod.git_show(src, head, '.sync/upstreams.json')),
+            }
+            members = [{'name': 'ask-me', 'path': 'skills/ask-me', 'depends': []}]
+            # Re-staging identical content reuses dst in place (same inode)
+            mod.stage_user_payloads(members, snap, meta, snap_root, head)
+            self.assertEqual((dst / 'SKILL.md').stat().st_ino, ino_before)
+
+            # If dst drifted and os.rename(tmp, dst) fails, old dst is restored
+            (dst / 'EXTRA.txt').write_text('drifted')
+            real_rename = mod.os.rename
+
+            def fail_tmp_to_dst(a, b):
+                if Path(a).name.startswith('.ask-me.ibstage-') and Path(b) == dst:
+                    raise OSError('simulated rename failure into dst')
+                return real_rename(a, b)
+
+            mod.os.rename = fail_tmp_to_dst
+            try:
+                with self.assertRaises(OSError):
+                    mod.stage_user_payloads(members, snap, meta, snap_root, head)
+            finally:
+                mod.os.rename = real_rename
+            self.assertTrue((link / 'SKILL.md').is_file(),
+                            'live symlink must remain resolvable after staging failure')
+
+    def test_cross_device_restore_cleanup_failure_resumes_cleanly(self):
+        """Sol fix5 P1 #2: if EXDEV copy-and-rename lands the restored payload
+        at target and then remove(stored) fails mid-cleanup, a retry sees
+        target_restored, skips re-copying, finishes cleanup, and succeeds."""
+        import errno
+        mod = load_ib()
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp).resolve()
+            target = base / 'target'
+            backup = base / 'backup'
+            target.mkdir()
+            mod.make_backup_dir(backup)
+            skill = target / 'demo'
+            skill.mkdir()
+            (skill / 'SKILL.md').write_text('ORIGINAL V1')
+            (skill / 'extra.txt').write_text('EXTRA V1')
+            before = mod.describe(skill)
+
+            # Simulate an completed install that replaced demo with V2
+            stored = backup / 'files/0-demo'
+            stored.parent.mkdir(parents=True, exist_ok=True)
+            mod.shutil.copytree(skill, stored)
+            (skill / 'SKILL.md').write_text('INSTALLED V2')
+            (skill / 'extra.txt').unlink()
+            after = mod.describe(skill)
+
+            ops = [{
+                'op': 'copy',
+                'path': str(skill),
+                'backup': 'files/0-demo',
+                'state': 'done',
+                'backup_committed': True,
+                'before': before,
+                'after': after,
+            }]
+            saved_states = []
+
+            def save():
+                saved_states.append(json.loads(json.dumps(ops)))
+
+            real_rename = mod.os.rename
+            real_remove = mod.remove
+
+            def exdev_on_stored(src_p, dst_p):
+                if Path(src_p) == stored and Path(dst_p) == skill:
+                    raise OSError(errno.EXDEV, 'Cross-device link')
+                return real_rename(src_p, dst_p)
+
+            def partial_fail_cleanup(p):
+                if Path(p) == stored:
+                    # Half-delete the backup copy before failing
+                    (stored / 'extra.txt').unlink(missing_ok=True)
+                    raise OSError(errno.EACCES, 'simulated cleanup failure')
+                return real_remove(p)
+
+            mod.os.rename = exdev_on_stored
+            mod.remove = partial_fail_cleanup
+            try:
+                problems, errors = mod.rollback(ops, backup, verify=True, save=save)
+            finally:
+                mod.os.rename = real_rename
+                mod.remove = real_remove
+
+            self.assertEqual(problems, [])
+            self.assertEqual(len(errors), 1)
+            self.assertEqual(ops[0].get('restore_stage'), 'target_restored')
+            self.assertFalse(ops[0].get('restored'))
+            self.assertEqual(mod.describe(skill), before)
+
+            # Retry with verify=True: must accept target_restored, clean up
+            # the partially-deleted stored backup, and mark restored=True.
+            problems2, errors2 = mod.rollback(ops, backup, verify=True, save=save)
+            self.assertEqual(problems2, [])
+            self.assertEqual(errors2, [])
+            self.assertTrue(ops[0].get('restored'))
+            self.assertNotIn('restore_stage', ops[0])
+            self.assertFalse(stored.exists())
+            self.assertEqual(mod.describe(skill), before)
 
 
 if __name__ == '__main__':

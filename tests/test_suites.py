@@ -153,7 +153,8 @@ class DesignSuiteTests(SuiteMemberTests):
 class UiKitSuiteTests(SuiteMemberTests):
     def test_members(self):
         self.assertEqual({m['name'] for m in UIKIT},
-                         {'impeccable', 'prototype'})
+                         {'impeccable', 'modern-web-guidance', 'prototype',
+                          'ui-sdk'})
         self.check_members('ui-kit', UIKIT)
 
     def test_no_impeccable_binary_or_live_browser(self):

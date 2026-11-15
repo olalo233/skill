@@ -49,6 +49,13 @@
       "depends": []
     },
     {
+      "name": "modern-web-guidance",
+      "suite": "ui-kit",
+      "summary": "Search tool for modern web development best practices.",
+      "path": "skills/modern-web-guidance/SKILL.md",
+      "depends": []
+    },
+    {
       "name": "ponytail-review",
       "suite": "review",
       "summary": "Code review focused exclusively on over-engineering.",
@@ -73,6 +80,13 @@
         "domain-modeling",
         "grilling"
       ]
+    },
+    {
+      "name": "ui-sdk",
+      "suite": "ui-kit",
+      "summary": "Builds interfaces with ui-sdk in React, Vue, Svelte, Solid or web components.",
+      "path": "skills/ui-sdk/SKILL.md",
+      "depends": []
     },
     {
       "name": "ux-spec",

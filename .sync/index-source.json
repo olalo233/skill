@@ -34,7 +34,9 @@
     "ui-kit": {
       "title": "UI kit (suites/ui-kit.json)",
       "skills": [
-        "impeccable"
+        "impeccable",
+        "modern-web-guidance",
+        "ui-sdk"
       ]
     }
   },
