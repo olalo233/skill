@@ -17,11 +17,11 @@ Core principles:
 
 ## Setup
 
-1. If the optional impeccable CLI is installed — `<skill-base-dir>/scripts/impeccable`, where `<skill-base-dir>` is the directory that contains this SKILL.md — run `impeccable context` once per session with cwd at the user's project, passing a named source file or route as `--target <path>`; follow its directives and do not rerun it. The default install ships no CLI (the detector binary and live-browser helpers are an optional extra): skip this step and read existing PRODUCT.md, DESIGN.md, and surface briefs directly without inventing missing context.
+1. Read the project context once per session, with the user's project as working root: existing PRODUCT.md, DESIGN.md, surface briefs under `.impeccable/`, and the named source file or route the request targets. Follow what they record; do not re-read them until the surface changes, and do not invent missing context.
 2. Load the request's playbook: its Commands-table reference for an explicit/implied sub-command, or [reference/new-work.md](reference/new-work.md) for a new surface or replacement visual world. Inspect target and incumbent visual truth before editing. When the app cannot run, start with committed visual-regression goldens or screenshot fixtures; verify target and freshness against current tokens, CSS, components, or assets, resolve conflicts, and compare theme/variant captures.
 3. After resolving analysis and direction, read [reference/craft-floor.md](reference/craft-floor.md) immediately before any UI edit, including small refinements. It carries the quality floor, the absolute bans, and the reflexes no detector catches. Do not load it for planning-only work.
 
-**Launcher unavailable:** On refusal or failure, send a separate message **before the next tool call**: “Context loading did not run; I’ll read the existing project context directly.” Then read existing PRODUCT.md and DESIGN.md without inventing missing context, follow applicable steps 2–3, including reading [reference/craft-floor.md](reference/craft-floor.md) immediately before any UI edit, and continue through permitted tools. This applies to planning and editing; launcher failure alone does not block either.
+**Context file unreadable:** When PRODUCT.md or DESIGN.md exists but cannot be read or parsed, send a separate message **before the next tool call**: “Context loading did not run; I’ll proceed on the request and the code itself.” Then follow steps 2–3, including reading [reference/craft-floor.md](reference/craft-floor.md) immediately before any UI edit, and continue. Unreadable context never blocks planning or editing on its own.
 
 ## How to design
 
@@ -73,9 +73,9 @@ Routing:
 - **No argument:** read [routing.md](reference/routing.md) and present its context-aware menu; never auto-run a command.
 - **Explicit or clearly implied request to run a command:** load its reference (native variant on native platforms) and follow it. Ask once if two commands fit.
 - **Workflow or command-selection question:** read [Workflow questions](reference/routing.md#workflow-questions).
-- **Otherwise:** treat the request as general design work. Missing PRODUCT.md routes a new surface or replacement world through init, then new-work; a narrow refinement of existing code proceeds on the incumbent implementation as `impeccable context` directs, offering init afterward rather than blocking on it.
+- **Otherwise:** treat the request as general design work. Missing PRODUCT.md routes a new surface or replacement world through init, then new-work; a narrow refinement of existing code proceeds on the incumbent implementation as the recorded context directs, offering init afterward rather than blocking on it.
 - `teach` aliases `init`. `craft` is a deprecated alias for ordinary new-work and adds nothing. `shape` owns task discovery, then enters new-work only for visual-world and surface-concept decisions.
 
-After init writes PRODUCT.md, resume without rerunning context; init loads the native platform reference itself when the platform it recorded is `ios`, `android`, or `adaptive`.
+After init writes PRODUCT.md, resume without rereading the rest of the context; init loads the native platform reference itself when the platform it recorded is `ios`, `android`, or `adaptive`.
 
 **Never repair drift as a side effect of a design task.** A `CONTEXT_STALE` finding is reported, not acted on, unless the user asks. The one exception is a finding marked `auto`, which the next write to that file performs anyway.

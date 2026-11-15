@@ -1,6 +1,6 @@
 # Operate
 
-`impeccable concept-seed --mode operate` prints the two sections below as its MODE RULES block. On an Operate surface the visitor came to get a job done, so the page is first a working product of its category and the world serves it.
+The two sections below are the mode rules new-work.md refers to; read them directly. On an Operate surface the visitor came to get a job done, so the page is first a working product of its category and the world serves it.
 
 ## Directions
 

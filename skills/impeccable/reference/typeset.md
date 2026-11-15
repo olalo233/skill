@@ -21,13 +21,9 @@ When a sub-agent tool is available and permitted, run these independently; other
    - **Reading:** Does body copy stay within a comfortable 45–75 character measure? Are line height, paragraph rhythm, contrast, and tracking tuned to the actual face, width, language, and surface?
    - **Stress:** What happens with long headings, localization expansion, zoom, narrow containers, missing weights, and font fallback?
    - **Delivery:** Are only used assets loaded? Do fallback metrics, loading strategy, and variable-font settings avoid invisible text and disruptive reflow?
-2. **Mechanical scan:** run:
+2. **Mechanical scan:** read the target's markup and CSS against [craft-floor.md](craft-floor.md)'s type rules: measure, tracking floor, scale steps, gradient or decorative text treatments, monospace used as costume, hosted font stylesheets in place of self-hosted faces, and fallback stacks.
 
-```bash
-.agents/skills/impeccable/scripts/impeccable detect --json --scope type [target files or dirs]
-```
-
-Also inspect dynamic or arbitrary font values the detector cannot interpret. Synthesize both assessments before editing, noting what each caught alone. A clean scan is a floor, not proof of good typography.
+Also inspect dynamic or arbitrary font values a checklist cannot interpret. Synthesize both assessments before editing, noting what each caught alone. A clean scan is a floor, not proof of good typography.
 
 ## Set the system
 

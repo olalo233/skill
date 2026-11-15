@@ -49,6 +49,8 @@ npx skills update html show-me eli5
 
 ## 上游自动合并
 
+> **周更发布未启用。** 下方描述的每周自动合并/发布链路当前不在运行（workflow 未启用）；`.sync/upstreams.json` 的基线仍需人工维护，问题修复见后续 PR。
+
 每周一 03:23 UTC（香港时间 11:23），GitHub Actions 获取 `.sync/upstreams.json` 登记的上游目录，以记录的 commit 为基线进行三方合并。
 
 - 只导入已登记的技能路径和许可证；保留本地新增文件与可合并的定制。

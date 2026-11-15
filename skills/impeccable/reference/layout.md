@@ -22,13 +22,9 @@ When a sub-agent tool is available and permitted, run these independently; other
    - **Density:** Does the amount of information per region fit use frequency, decision complexity, and visitor mode?
    - **Adaptation:** At narrow, intermediate, wide, zoomed, and localized states, what reorders, collapses, wraps, scrolls, or remains fixed? Does DOM and focus order still agree with the visual order?
    - **Extremes:** Do long content, empty states, overlays, sticky elements, safe areas, and small touch targets expose structural failures?
-2. **Mechanical scan:** run:
+2. **Mechanical scan:** read the target's markup and CSS against [craft-floor.md](craft-floor.md)'s layout-bearing rules: spacing rhythm and heading space, card/nested-card scaffolds, ghost-card border-plus-shadow, safe-area and sticky-element behavior, overflow handling, and container structure.
 
-```bash
-.agents/skills/impeccable/scripts/impeccable detect --json --scope layout [target files or dirs]
-```
-
-Also inspect arbitrary spacing, overflow, stacking, and container behavior the detector cannot resolve. Keep mechanical evidence out of the first assessment, then synthesize both passes before editing. A clean scan cannot prove hierarchy or rhythm.
+Also inspect arbitrary spacing, overflow, stacking, and container behavior a checklist cannot resolve. Keep mechanical evidence out of the first assessment, then synthesize both passes before editing. A clean scan cannot prove hierarchy or rhythm.
 
 ## Set the spatial thesis
 

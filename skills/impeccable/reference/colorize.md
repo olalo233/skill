@@ -77,7 +77,7 @@ When the palette earns its place, hand off to `$impeccable polish` for the final
 
 ## Live-mode signature params
 
-When invoked from live mode, every variant declares a `color-amount` parameter. Author CSS against `var(--p-color-amount, 0.5)` so the user can move from neutral to the variant's full color strategy without regeneration.
+Where the harness lets the user tune intensity after the fact, every variant can declare a `color-amount` parameter: author CSS against `var(--p-color-amount, 0.5)` so the user can move from neutral to the variant's full color strategy without regeneration.
 
 ```json
 {"id":"color-amount","kind":"range","min":0,"max":1,"step":0.05,"default":0.5,"label":"Color amount"}

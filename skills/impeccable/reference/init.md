@@ -1,10 +1,9 @@
 # Init flow
 
-`init` captures durable product truth in PRODUCT.md. It does not invent a visual world and does not write DESIGN.md; [new-work.md](new-work.md) creates or expands one, and [document.md](document.md) records an incumbent one. Existing runnable web projects may also receive `.impeccable/live/config.json`.
-
+`init` captures durable product truth in PRODUCT.md. It does not invent a visual world and does not write DESIGN.md; [new-work.md](new-work.md) creates or expands one, and [document.md](document.md) records an incumbent one. 
 ## Step 1: Load current state
 
-Use the PRODUCT.md path resolved by `impeccable context`. Update it instead of creating a competing authority. In a child app inheriting root context, confirm shared versus app-specific scope before writing.
+Use the PRODUCT.md at the project root (`PROJECT_ROOT/PRODUCT.md`), or the path an existing one already sits at. Update it instead of creating a competing authority. In a child app inheriting root context, confirm shared versus app-specific scope before writing.
 
 - **No PRODUCT.md:** explore, interview, and write it.
 - **PRODUCT.md exists:** ask what product knowledge is stale or missing; do not reopen confirmed fields without a reason.
@@ -16,7 +15,7 @@ Never silently overwrite an existing file or offer DESIGN.md during init. If ano
 
 ## Step 2: Explore the project
 
-Before asking, scan enough to avoid making the user repeat known facts: product docs and copy; package/config and app boundaries; features, workflows, routes, and roles; names, logos, legal/proof assets, and brand commitments; platform/accessibility signals; and the dev command/entry when live mode applies.
+Before asking, scan enough to avoid making the user repeat known facts: product docs and copy; package/config and app boundaries; features, workflows, routes, and roles; names, logos, legal/proof assets, and brand commitments; platform/accessibility signals; and the dev command/entry where the project has one.
 
 Treat repository evidence as a hypothesis, not user approval. Note visual maturity without documenting, extending, or replacing the world.
 
@@ -101,7 +100,7 @@ Platform is the bare value `web`, `ios`, `android`, or `adaptive`. Preserve usef
 
 Copy the `impeccable:product-schema` comment verbatim, including when you update an older file. It records which version of the product record this file follows, so later versions can tell a deliberately short record from one written before a section existed, and never propose an interview the user has already sat through. Update the number only when this reference's template changes it. Sections a later version retires are reported to you at boot as deprecated; delete them when the user agrees rather than carrying them forward.
 
-When the platform you just recorded is `ios`, `android`, or `adaptive`, load [ios.md](ios.md), [android.md](android.md), or both before any design work. On a project that had no PRODUCT.md, `impeccable context` could not know the platform and so never loaded them; init is the only place that learns the answer.
+When the platform you just recorded is `ios`, `android`, or `adaptive`, load [ios.md](ios.md), [android.md](android.md), or both before any design work. On a project that had no PRODUCT.md, nothing could have known the platform before now; init is the only place that learns the answer.
 
 ### Completion gate
 
@@ -109,7 +108,7 @@ Before loading new-work or resuming shape/build, verify that PRODUCT.md exists a
 
 ## Step 5: Record workflow defaults
 
-When image generation is available and no `buildPath` is recorded yet, ask once how new surfaces should be built. Availability means a harness-native image tool or the API fallback that `impeccable context` reports as `IMAGE_GEN_AVAILABLE`, and the first of those leaves no trace in the boot output: `impeccable context` only sees the key, so a silent boot on a harness that generates images is not evidence there is nothing to ask about. This is its own question, never a clause riding inside another one. The stack round asks what to build with; this asks how the building starts, and an answer to the first carries no consent about the second. State the trade in the question the user actually reads, because the two names mean nothing to someone meeting them for the first time: **comp-first** (an image sets the bar before any code; bolder composition, slower, and the build must match the image) or **code-first** (build directly; the ambition is written into the direction contract and audited at the finish; leaner, faster). Say in the same question what the choice covers: landing pages and showcase surfaces. App screens and documents are built code-first either way.
+When image generation is available and no `buildPath` is recorded yet, ask once how new surfaces should be built. Availability means a harness-native image tool. This is its own question, never a clause riding inside another one. The stack round asks what to build with; this asks how the building starts, and an answer to the first carries no consent about the second. State the trade in the question the user actually reads, because the two names mean nothing to someone meeting them for the first time: **comp-first** (an image sets the bar before any code; bolder composition, slower, and the build must match the image) or **code-first** (build directly; the ambition is written into the direction contract and audited at the finish; leaner, faster). Say in the same question what the choice covers: landing pages and showcase surfaces. App screens and documents are built code-first either way.
 
 Write the answer to `.impeccable/config.json` as `"buildPath": "comp"` or `"buildPath": "code"`, merging with the keys already there. Write only the value the user chose. A recommendation you made is not an answer you received, and a value taken from silence is a standing default nobody set: it then rides every future round in the project, which is the opposite of asking once. When the question goes unanswered, record nothing and say in one line which path this session is taking and that it is not stored. That path is comp-first on a landing page or showcase surface, the default new-work applies wherever image generation exists and nothing is recorded, and code-first on an app screen or document; name it rather than choosing a quieter one, because a silent default invented here is the same failure as a value written without an answer. Unset is a working state, not a gap: the decision page's toggle governs each session, and new-work's one-time offer records the answer the first time the user flips it. The config is the only place this lives. It is a workflow setting, not product truth, so it never joins `## Stack` or any other PRODUCT.md section, where a second copy would outlive the setting and steer rounds nobody could trace back to it.
 
@@ -120,13 +119,12 @@ A value already recorded in `.impeccable/config.json` or the gitignored `.impecc
 
 Summarize captured and deliberately undecided facts. Do not offer DESIGN.md merely because it is missing.
 
-Tell the user once which files to commit: PRODUCT.md, DESIGN.md, `.impeccable/config.json`, `.impeccable/surfaces/`, `.impeccable/design.json`, `.impeccable/live/config.json`, and `.impeccable/critique/ignore.md`. A blanket `.impeccable/` ignore hides them from teammates and other worktrees. The runtime directories (`questions/`, `mocks/`, `review/`, critique snapshots) ignore themselves, and `.impeccable/config.local.json` stays on the developer's machine.
+Tell the user once which files to commit: PRODUCT.md, DESIGN.md, `.impeccable/config.json`, `.impeccable/surfaces/`, `.impeccable/design.json`, and `.impeccable/critique/ignore.md`. A blanket `.impeccable/` ignore hides them from teammates and other worktrees. The runtime directories (`mocks/`, `review/`, `briefs/`, critique snapshots) ignore themselves, and `.impeccable/config.local.json` stays on the developer's machine.
 
 Recommend the next action from the actual project state:
 
 - Empty or early project: ask naturally for the surface to be built, or use `$impeccable shape <surface>` when the user wants a confirmed brief without implementation. New-work will establish a visual world only when the requested work needs one.
 - Existing coherent interface without DESIGN.md: `$impeccable document` if the user wants the incumbent system recorded independently of a new build.
 - Existing surface needing work: name the most relevant scoped command.
-- Web project ready for visual iteration: `$impeccable live` when configured.
 
-If init was invoked by another request, resume without rerunning `impeccable context`; the native reference above is the one thing that run could not have given you, and new-work owns later visual decisions.
+If init was invoked by another request, resume without rereading the context; the native reference above is the one thing that run could not have given you, and new-work owns later visual decisions.

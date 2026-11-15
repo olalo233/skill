@@ -6,15 +6,14 @@ When a Kimi design export exists in the project, it is the ground truth for visu
 
 ### Hard Invariants
 
-- Assessment A (design review) and Assessment B (detector/browser evidence) are both required, except on a native platform (see Assessment Orchestration).
+- Assessment A (design review) and Assessment B (mechanical pass + rendered evidence) are both required, except on a native platform (see Assessment Orchestration).
 - If a Kimi design export exists, Assessment A compares the surface against it item by item; the export is authoritative over generic heuristics.
 - Assessment A and B MUST run as two isolated sub-agents whenever a sub-agent/Task tool is exposed. Running them inline in this context is "possible" but is NOT permitted; it is a degraded run. Inline is allowed ONLY when no sub-agent tool exists (or the user declined, on harnesses that ask). Native platforms run A alone (see Assessment Orchestration).
 - If you degrade for any reason, the report's first line MUST be a banner: `⚠️ DEGRADED: single-context (<reason>)`. A silent degraded critique is a failed critique.
-- Assessment A must finish before detector findings enter the parent synthesis context. Detector output is deterministic, but it still anchors judgment.
-- A skipped detector is a failed critique run unless `impeccable detect` is missing or crashes after a real attempt, or the platform is native (see Assessment Orchestration).
+- Assessment A must finish before mechanical-pass findings enter the parent synthesis context. The pass is deterministic in what it checks, but it still anchors judgment.
+- A skipped mechanical pass is a failed critique run, except on a native platform (see Assessment Orchestration).
 - Viewable targets require browser inspection when available.
 - Any local server started only for critique visualization must run in the background, have a recorded stop method, and be stopped before final reporting unless the user asks to keep it.
-- Do not claim a user-visible overlay exists unless script injection succeeded and the detector ran in the page.
 - The question is the LAST thing in the response. Write the entire report out first, then ask; nothing follows the question. Prose emitted after a structured question is withheld until the user answers it, so a report written after the question reads as if the critique never ran.
 - A run that ends with neither the targeted questions nor a literal `Questions skipped: <reason>` line is an incomplete run. The report is not the finish; the close is.
 
@@ -24,16 +23,12 @@ When a Kimi design export exists in the project, it is the ground truth for visu
    - "the homepage" -> `site/pages/index.astro` or `index.html`
    - "the settings modal" -> the primary component file
    - "this page" -> the current URL or source file
-2. **Confirm the target slugs cleanly**:
-   ```bash
-   .agents/skills/impeccable/scripts/impeccable critique-storage slug "<resolved-path-or-url>"
-   ```
-   Every later command also accepts the resolved target directly and derives the same slug internally; never hand-write a slug. If this exits non-zero, skip persistence and trend for this run, but continue the critique.
+2. **Derive the target slug**: lowercase the resolved path or URL, replace every run of non-alphanumeric characters with `-`, and trim leading/trailing dashes (`site/pages/index.astro` -> `site-pages-index-astro`). If the target is too vague to slug (root-level, or no concrete path/URL), record the slug as null, skip persistence and trend for this run, and continue the critique.
 3. **Read `.impeccable/critique/ignore.md`** if it exists. Drop matching findings silently; it is the only prior-run input critique consumes.
 
 ### Assessment Orchestration
 
-**Native platforms** (`ios` / `android` / `adaptive`): Assessment B does not apply, because `impeccable detect` and the browser overlay read only web markup. Run Assessment A alone in this context and skip both sub-agent gates below, the Codex permission question included: with no B there is nothing to isolate A from, so this is the complete native method and carries no degraded banner. Do not run `impeccable detect` on native source; its empty result reads as clean.
+**Native platforms** (`ios` / `android` / `adaptive`): Assessment B does not apply, because the mechanical pass reads only web markup. Run Assessment A alone in this context and skip both sub-agent gates below, the Codex permission question included: with no B there is nothing to isolate A from, so this is the complete native method and carries no degraded banner. Do not run the mechanical pass on native source; its empty result reads as clean.
 
 Delegate Assessment A and Assessment B to separate sub-agents. They must not see each other's output. Do not show findings to the user until synthesis.
 
@@ -53,7 +48,7 @@ Codex sub-agent gate (overrides the default above; Codex's permission model requ
 - If spawning fails after permission, run sequentially and lead with `⚠️ DEGRADED: single-context (sub-agent spawn failed: <exact error>)`.
 Prefer `fork_context: false` with self-contained prompts containing cwd, target, live URL, references, product context, and output contract. If using `fork_context: true`, omit `agent_type`, `model`, and `reasoning_effort`.
 
-If browser automation is available, each assessment creates its own new tab. Never reuse an existing tab, even if it is already at the right URL. Desktop apps are the exception (see **Desktop apps** under Assessment B).
+If browser tooling is available, each assessment opens its own fresh view. Never reuse an existing one, even if it is already at the right URL. Desktop apps are the exception (see **Desktop apps** under Assessment B).
 
 ### Assessment A: Design Review
 
@@ -68,49 +63,35 @@ Evaluate:
 
 Return: design-specificity verdict, heuristic scores, cognitive load, emotional journey, 2-3 strengths, 3-5 priority issues, persona red flags, minor observations, and provocative questions.
 
-### Assessment B: Detector + Browser Evidence
+### Assessment B: Mechanical pass + rendered evidence
 
-Run the bundled detector and browser visualization evidence. On web, Assessment B is mandatory and must remain isolated from Assessment A until both are complete.
+Two kinds of deterministic evidence, both isolated from Assessment A until complete.
 
-CLI scan:
-```bash
-.agents/skills/impeccable/scripts/impeccable detect --json [target]
-```
+**Mechanical pass.** Read the target's markup and CSS source and check it against [craft-floor.md](craft-floor.md): every Refuse-list pattern present in the source is a finding (gradient text, kicker/eyebrow labels, decorative glass, coloured 1px+ side borders, hard offset shadows, sketch-style illustration SVG, geometric masks on organic subjects, hosted font stylesheets, organic multi-vertex `clip-path` where a plate belongs, nested same-shape cards, monos-as-costume, system faces as the display voice); the Verify items checkable from source (contrast token pairs, measure, tracking, state styles, browser-surface theming) join them. Report each finding with file, rule name, and line region.
 
-- Pass markup files/directories as `[target]`; do not pass CSS-only files.
-- For URLs, skip CLI scan and use browser visualization.
+- Pass markup files/directories as the target; CSS-only files are checked alongside the markup that uses them.
+- For a URL-only target with no readable source, the mechanical pass cannot run: say so and rely on rendered evidence plus Assessment A.
 - For very large trees (500+ scannable files), narrow scope or ask.
-- Exit code 0 = clean; 2 = findings.
-- If the detector entrypoint is missing or fails to load, report deterministic scan unavailable and continue with browser/manual review.
 
-Browser visualization is required for a viewable target when browser automation is available. Use a localhost dev/static URL for local files; avoid `file://` unless the available browser explicitly supports this workflow. Overlay flow:
+**Rendered evidence** is required for a viewable target when the harness has browser or screenshot tooling. Serve or open the page the ordinary way (a local dev/static server the harness starts and stops, or the harness's own page capture); avoid `file://` unless the available tooling explicitly supports it.
 
-1. Create a fresh tab and navigate. Prefer the harness's native/browser-canvas screenshot path before hand-rolling a Playwright/Puppeteer script; only fall back to a custom script when no native browser tool is exposed.
-2. Preflight mutable injection by setting `document.title` and appending a `<script>` tag. Read-only evaluate APIs do not count.
-3. If mutation is unavailable, skip live server, browser presentation, and injection; report fallback signal.
-4. If mutation is available, start `.agents/skills/impeccable/scripts/impeccable live-server --background`, present the browser if supported, label `[Human]`, scroll top, inject `http://localhost:PORT/detect.js`, wait 2-3 seconds, read `impeccable` console messages, then run `.agents/skills/impeccable/scripts/impeccable live-server stop --keep-inject`. The overlay went in through the browser, so the project's HTML has no script tag to strip; a bare `stop` also runs `live-inject --remove` against the project's entry file, an edit a read-only critique should not make.
-5. For multi-view targets, inject on 3-5 representative pages.
+1. Open a fresh view and navigate. Prefer the harness's native screenshot/canvas path before hand-rolling a script.
+2. Capture the resting view and the states Assessment A flagged; for multi-view targets capture 3-5 representative pages.
+3. Inspect the captures for the same Refuse patterns the mechanical pass checks source for — visual evidence catches what markup reading cannot (computed contrast, painted shadows, layout drift).
 
-**Desktop apps** (Electron, NW.js, CEF, WebView2): there is no URL to open, so Assessment B attaches to the running app instead.
+**Desktop apps** (Electron, NW.js, CEF, WebView2): there is no URL to open, so Assessment B attaches to the running app the ordinary way: launch it, seed the state under review (route, open panel, theme, data), keep the window on screen, and capture it through whatever tooling the harness offers. The app has one window, so the assessments take turns in it instead of opening views (A, then B; see the sub-agent gate), and each must leave it as found: put back any route, scroll, theme, or panel it changed. Tauri on macOS and Linux exposes no inspectable web surface: run Assessment A and the source pass only, and say so in Run Notes.
 
-1. Launch the app with a local DevTools port: `--remote-debugging-port=9222` (Electron, NW.js, CEF), or `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9222` for WebView2. Keep the port on 127.0.0.1 and never expose it beyond this machine; prefer a test profile and test data.
-2. Seed the state under review (route, open panel, theme, data). The scan reads the window as it stands. Keep the window on screen: a minimized or hidden window scans without the pixel contrast reads.
-3. Run `.agents/skills/impeccable/scripts/impeccable detect --cdp 9222 --target <part of the page URL or title> --json`. It returns the same JSON as a URL scan and leaves the page as found. With several pages open it fails and lists them; rerun with a `--target` that names one.
-4. Take screenshots through the harness's CDP tooling (`Page.captureScreenshot` on the same target). Skip the live-server overlay: there is no `[Human]` tab.
+Codex Browser note: Use the Browser skill. Do not spend a Browser attempt on `file://`.
 
-The app has one window, so the assessments take turns in it instead of opening tabs (A, then B; see the sub-agent gate), and each must leave it as found: put back any route, scroll, theme, or panel it changed. Tauri on macOS (WKWebView) and on Linux (WebKitGTK) expose no CDP: run Assessment A and the source scan only, and say so in Run Notes.
+Return: mechanical-pass findings with rule names and file locations, rendered-evidence captures and what they show, false positives, and skipped/failed steps with concrete reasons.
 
-Codex Browser note: Use the Browser skill. Do not spend a Browser attempt on `file://`. Only call `visibility.set(true)` after mutable script injection is confirmed for the `[Human]` overlay path; verify with `get()`. Use `tab.dev.logs({ filter: "impeccable" })` for console results. Its Playwright `evaluate(...)` surface is read-only; do not rely on it for mutation.
+After Assessment B returns usable findings, reuse them. Do not repeat the mechanical pass in the parent unless Assessment B failed, was truncated, or omitted counts, rule names, or file locations.
 
-Return: CLI findings JSON/counts, browser console findings if applicable, false positives, and skipped/failed browser steps with concrete reasons.
-
-After Assessment B returns usable CLI findings, reuse them. Do not rerun `impeccable detect` in the parent unless Assessment B failed, was truncated, or omitted count, rule names, or file locations.
-
-Codex failure accounting: final Run Notes must include target slug, ignore list, assessment independence, CLI detector, browser visibility, overlay injection, live-server cleanup, temp-file cleanup, and any fallback signal used. Do not run repo status checks, late API spelunking, or unrelated verification after the report is assembled.
+Codex failure accounting: final Run Notes must include target slug, ignore list, assessment independence, mechanical pass, rendered evidence, any local server started and stopped, temp-file cleanup, and any fallback signal used. Do not run repo status checks, late API spelunking, or unrelated verification after the report is assembled.
 
 ### Generate Combined Critique Report
 
-Synthesize both assessments into a single report. Do not simply concatenate. Weave the findings together, noting where the LLM review and detector agree, where the detector caught issues the LLM missed, and where detector findings are false positives.
+Synthesize both assessments into a single report. Do not simply concatenate. Weave the findings together, noting where the design review and mechanical pass agree, where the pass caught issues the review missed, and where pass findings are false positives.
 
 The chat response is the primary user-facing deliverable. Present the full structured critique below in chat; do not replace it with a summary and a link. The persisted snapshot is an archive of that run.
 
@@ -123,7 +104,7 @@ Structure your feedback as a design director would:
 The report's first line MUST declare how the assessments were run, so a degraded run is never silent:
 - Dual-agent: `Method: dual-agent (A: <agent-id> · B: <agent-id>)`
 - Degraded: `⚠️ DEGRADED: single-context (<reason, e.g. no sub-agent tool exposed>)`
-- Native: `Method: design review only (detector not applicable, native platform)`
+- Native: `Method: design review only (mechanical pass not applicable, native platform)`
 
 #### Design Health Score
 > *Consult the [Heuristics Scoring Guide](#heuristics-scoring-guide) section below.*
@@ -156,9 +137,9 @@ Be honest with scores. A 4 means genuinely excellent. Most real interfaces score
 
 **LLM assessment**: Your unanchored evaluation of design specificity. Cover overall coherence, structural sameness, category-interchangeable choices, and missed opportunities for product character.
 
-**Deterministic scan**: Summarize what the automated detector found, with counts and file locations. Note any additional issues the detector caught that you missed, and flag any false positives. On a native platform, write `not applicable (native platform)` instead.
+**Mechanical pass**: Summarize what the source pass found, with counts and file locations. Note any additional issues the pass caught that you missed, and flag any false positives. On a native platform, write `not applicable (native platform)` instead.
 
-**Visual overlays** (if injection succeeded): Tell the user that overlays are now visible in the **[Human]** tab in their browser, highlighting the detected issues. Summarize what the console output reported. If browser visualization was attempted but injection failed, say that no reliable user-visible overlay is available and report the fallback signal instead.
+**Rendered evidence** (where captured): Summarize what the captures showed, which states and pages were rendered, and anything the render proved that source reading could not. If rendering was attempted but the tooling failed, say so and report the fallback signal instead.
 
 #### Overall Impression
 A brief gut reaction: what works, what doesn't, and the single biggest opportunity.
@@ -198,7 +179,7 @@ Provocative questions that might unlock better solutions:
 - "What would a confident version of this look like?"
 
 #### Run Notes
-Keep this compact. Include status for target slug, ignore list, assessment independence, CLI detector, browser visibility, overlay injection, live server cleanup, and temp-file cleanup. For failed or skipped steps, give the concrete observed reason and the fallback signal used. In the final chat response, also include snapshot write and trend read status after persistence has run.
+Keep this compact. Include status for target slug, ignore list, assessment independence, mechanical pass, rendered evidence, any local server started and stopped, and temp-file cleanup. For failed or skipped steps, give the concrete observed reason and the fallback signal used. In the final chat response, also include snapshot write and trend read status after persistence has run.
 
 Codex Run Notes are final-chat only. Do not include this section in the persisted snapshot body, because persistence, trend read, and temp cleanup happen after the snapshot write and would otherwise archive stale status such as "pending after persistence."
 
@@ -220,32 +201,34 @@ Persistence is not the end of the run. After it, the response continues with the
 
 ### Persist the Snapshot
 
-Once the report above is finalized, write it to `.impeccable/critique/` so the user can refer back, and so `$impeccable polish` can pick up the priority issues without a copy-paste.
+Once the report above is finalized, write it to `.impeccable/critique/` so the user can refer back, and so `$impeccable polish` can pick up the priority issues without a copy-paste. All file work here is ordinary read/write under the project root.
 
-Skip this step if the Setup slug was null (vague or root-level target).
+Skip this step if the Setup slug was null (vague or root-level target), or the project opted out: a `.impeccable/critique/.off` file means no saved reports — skip the snapshot and the trend read, and mention nothing.
 
-1. **Write the body to a temp file** so you can pipe it to the helper. Use the full critique report (heuristic table, design-specificity verdict, priority issues, persona red flags, minor observations, and questions), but stop before the "Ask the User" / "Recommended Actions" sections that come later.
+1. **Write the snapshot** to `.impeccable/critique/<slug>-<YYYYMMDD-HHMM>.md`. Use the full critique report (heuristic table, design-specificity verdict, priority issues, persona red flags, minor observations, and questions), but stop before the "Ask the User" / "Recommended Actions" sections that come later.
 
-   This is a copy of the report you already delivered above, for later commands to read. It is not delivery. If you find yourself composing the report for the first time inside this heredoc, you have skipped Deliver the Report; go back and send it.
+   This is a copy of the report you already delivered above, for later commands to read. It is not delivery. If you find yourself composing the report for the first time inside this file, you have skipped Deliver the Report; go back and send it.
 
-   Codex: exclude Run Notes from the temp body file; Run Notes are final-chat only because persistence, trend read, and temp cleanup happen after the snapshot write.
+   Codex: exclude Run Notes from the snapshot; Run Notes are final-chat only because persistence and trend read happen after the snapshot write.
 
-2. **Pass the structured metadata** through `IMPECCABLE_CRITIQUE_META` (JSON), then run the write command:
-   ```bash
-   IMPECCABLE_CRITIQUE_META='{"target":"<user phrasing>","total_score":<n>,"max_score":<n>,"na_heuristics":"<comma-separated numbers, or empty>","p0_count":<n>,"p1_count":<n>}' \
-     .agents/skills/impeccable/scripts/impeccable critique-storage write "<resolved target>" <body-file>
+2. **Frontmatter**: the file opens with a YAML block recording structured metadata:
+
+   ```yaml
+   ---
+   target: "<user phrasing>"
+   total_score: <n>
+   max_score: <n>
+   na_heuristics: "<comma-separated numbers, or empty>"
+   p0_count: <n>
+   p1_count: <n>
+   ---
    ```
-   `max_score` is the applicable maximum from the heuristic table (40 when every heuristic applied), so a later run can tell a renormalized total from a full one. For a local file target, the helper also records an exact content fingerprint so polish can distinguish the assessed bytes from later edits without relying on Git state or timestamps. The helper prints the absolute path it wrote. Leave that file on disk. Polish closes it; this run does not. `REPORTS OFF:` instead means the project opted out of saved reports: skip the trend read and carry on.
 
-3. **Delete the temp body file** after the write attempt completes, whether the write succeeded or failed. If deletion fails, mention `temp-file cleanup failed: <reason>` briefly in the final output, but do not block the critique.
+   `max_score` is the applicable maximum from the heuristic table (40 when every heuristic applied), so a later run can tell a renormalized total from a full one. For a local file target, also record a content fingerprint (a hash of the assessed bytes) so polish can distinguish the assessed bytes from later edits without relying on Git state or timestamps. Leave the file on disk. Polish closes it; this run does not.
 
-4. **Read the trend** for context:
-   ```bash
-   .agents/skills/impeccable/scripts/impeccable critique-storage trend "<resolved target>" 5
-   ```
-   This returns a JSON array of the last 5 frontmatter entries (including the one you just wrote).
+3. **Read the trend**: list the earlier `.impeccable/critique/<slug>-*.md` files (up to 5, oldest to newest including the one you just wrote) and read each frontmatter's scores.
 
-5. **Append a single line to the user-visible output**, after the report and before the questions:
+4. **Append a single line to the user-visible output**, after the report and before the questions:
 
    > **Trend for `<slug>` (last 5 runs): 24 → 28 → 32 → 29 → 32 (out of 40)**
    > Wrote `.impeccable/critique/<filename>`.
@@ -254,9 +237,9 @@ Skip this step if the Setup slug was null (vague or root-level target).
 
    If this is the first run for the slug, the trend is just one score; say so: "First run for this target, no trend yet."
 
-6. **Close the run.** Go to Ask the User below and emit the questions, or the `Questions skipped: <reason>` line when the count allows it. The run is not complete until you do. Persistence is bookkeeping and cleanup is not an ending; stopping here leaves the user with a report and no way forward, and leaves `$impeccable polish` with no priorities to inherit.
+5. **Close the run.** Go to Ask the User below and emit the questions, or the `Questions skipped: <reason>` line when the count allows it. The run is not complete until you do. Persistence is bookkeeping and cleanup is not an ending; stopping here leaves the user with a report and no way forward, and leaves `$impeccable polish` with no priorities to inherit.
 
-This is fire-and-forget. Do not show the user the helper's JSON output; only the human-readable trend line and the written path. Failures here should not block the rest of the flow; print the error and move on.
+This is fire-and-forget bookkeeping. Do not show the user raw file dumps; only the human-readable trend line and the written path. Failures here should not block the rest of the flow; print the error and move on.
 
 ### Ask the User
 
@@ -825,7 +808,7 @@ Choose personas based on the interface type:
 
 #### Project-Specific Personas
 
-If PRODUCT.md has a `## Users` section (written by `impeccable init`), derive 1–2 additional personas from it and from `## Brand Commitments`:
+If PRODUCT.md has a `## Users` section (written by the `init` command), derive 1–2 additional personas from it and from `## Brand Commitments`:
 
 1. Read the target audience description
 2. Identify the primary user archetype not covered by the 5 predefined personas

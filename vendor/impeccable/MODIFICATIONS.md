@@ -21,3 +21,9 @@ upstream:
   `reference/routing.md`.
 - `critique` gains one rule: when a Kimi design export exists in the project,
   it is the ground truth and the surface is compared against it item by item.
+
+The derived copy at `skills/impeccable/` carries its own `LICENSE`, `NOTICE.md`,
+and `MODIFICATIONS.md`; that file, not this one, enumerates the offline
+adaptations (scriptless context, hand-dealt rolls, manual spec/phases/diff,
+mechanical pass, file-based persistence, sidecar provenance, no image API
+fallback, removed live/manual-edit agent).

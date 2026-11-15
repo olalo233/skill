@@ -45,7 +45,16 @@ def scan(root):
     """Return list of skill entries: name, suite, summary, path, depends."""
     src = json.loads((root / '.sync/index-source.json').read_text())
     suite_of = {s: suite for suite, meta in src['suites'].items() for s in meta['skills']}
+    # Depends have one fact source per member: suites/*.json declare them per
+    # member path; index-source's `depends` covers skills/ entries that no
+    # suite file declares. Both land in index.json so --skill installs get
+    # the same hard dependency closure as suite installs.
     depends = src.get('depends', {})
+    dep_by_dir = {}
+    for sf in sorted((root / 'suites').glob('*.json')):
+        for m in json.loads(sf.read_text()).get('members', []):
+            if m.get('depends'):
+                dep_by_dir[m['path']] = m['depends']
     entries = []
     for path in sorted((root / 'skills').glob('*/SKILL.md')):
         rel = path.relative_to(root).as_posix()
@@ -55,7 +64,7 @@ def scan(root):
             raise SystemExit(f'{rel}: not listed in any suite in .sync/index-source.json')
         entries.append({'name': fm.get('name', name), 'suite': suite_of[name],
                         'summary': summary_of(fm.get('description', '')),
-                        'path': rel, 'depends': depends.get(name, [])})
+                        'path': rel, 'depends': dep_by_dir.get(rel[:-9], depends.get(name, []))})
     for path in sorted(root.glob('vendor/**/SKILL.md')):
         rel = path.relative_to(root).as_posix()
         parts = PurePosixPath(rel).parts  # vendor/<suite>/...
@@ -63,7 +72,7 @@ def scan(root):
         fm = frontmatter(path)
         entries.append({'name': fm.get('name', path.parent.name), 'suite': suite,
                         'summary': summary_of(fm.get('description', '')),
-                        'path': rel, 'depends': depends.get(path.parent.name, [])})
+                        'path': rel, 'depends': dep_by_dir.get(rel[:-9], depends.get(path.parent.name, []))})
     return entries, src
 
 

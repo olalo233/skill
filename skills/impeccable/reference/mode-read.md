@@ -1,6 +1,6 @@
 # Read
 
-`impeccable concept-seed --mode read` prints the two sections below as its MODE RULES block. On a Read surface the visitor came to understand something, so the page is first a document of its kind, framed by the world.
+The two sections below are the mode rules new-work.md refers to; read them directly. On a Read surface the visitor came to understand something, so the page is first a document of its kind, framed by the world.
 
 ## Directions
 

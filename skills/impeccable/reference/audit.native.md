@@ -1,6 +1,6 @@
 Run systematic **technical** quality checks on a native app (`ios` / `android` / `adaptive`) and generate a comprehensive report. Don't fix issues; document them for other commands to address.
 
-This is a code-level audit, not a design critique. Audit from source (SwiftUI / UIKit / Compose / React Native / Flutter); no browser tooling or `impeccable detect` applies. Score against the platform reference(s): [ios.md](ios.md) / [android.md](android.md), both for `adaptive`. Read them before scoring if Setup hasn't already. The report skeleton mirrors [audit.md](audit.md); keep the two in sync when changing it.
+This is a code-level audit, not a design critique. Audit from source (SwiftUI / UIKit / Compose / React Native / Flutter); no browser tooling or markup mechanical pass applies. Score against the platform reference(s): [ios.md](ios.md) / [android.md](android.md), both for `adaptive`. Read them before scoring if Setup hasn't already. The report skeleton mirrors [audit.md](audit.md); keep the two in sync when changing it.
 
 ## Diagnostic Scan
 
@@ -140,4 +140,4 @@ Keep P3s few: a long tail of minor issues buries the ones that matter.
 
 ## Save the Report
 
-After the report is delivered, save a copy so the findings outlive this conversation: write it, from the score table through Recommended Actions, to a temp file, then run `.agents/skills/impeccable/scripts/impeccable audit-storage write "<resolved target, or . for the whole project>" <temp-file>` and delete the temp file. The helper prints the path it wrote, which you mention in one line; `REPORTS OFF:` means the project opted out, and you mention nothing. Saving never replaces delivering: the user reads the report in chat first.
+After the report is delivered, save a copy so the findings outlive this conversation: write it, from the score table through Recommended Actions, to `.impeccable/audit/<slug>-<YYYYMMDD-HHMM>.md` under the project root (slug derived as in [critique.md](critique.md)'s Setup; `.` for the whole project slugs as `root`). Mention the path in one line; a `.impeccable/audit/.off` file means the project opted out of saved reports, and you mention nothing. Saving never replaces delivering: the user reads the report in chat first.

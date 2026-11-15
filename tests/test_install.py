@@ -421,7 +421,9 @@ class SuiteTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr)
             lock = json.loads((proj / '.skills-lock.json').read_text())
             self.assertEqual(lock['skills']['y']['required_by'], ['one', 'two'])
-            self.assertEqual(lock['skills']['x']['source_repo'], 'example/upstream')
+            self.assertEqual(lock['skills']['x']['upstream'], 'example/upstream')
+            self.assertEqual(lock['skills']['x']['source_repo'], 'local')
+            self.assertEqual(lock['skills']['x']['source_commit'], head)
             self.assertTrue((proj / '.agents/skills/y').is_dir())
             self.assertTrue((proj / '.claude/skills/z').is_symlink())
 
@@ -592,6 +594,309 @@ class SuiteTests(unittest.TestCase):
             self.assertFalse((proj / '.agents/skills/y').exists())
             lock = json.loads((proj / '.skills-lock.json').read_text())
             self.assertNotIn('y', lock['skills'])
+
+
+class RegressionTests(unittest.TestCase):
+    """Reproductions of the review's injected/planned failures."""
+
+    def run_install(self, *args, cwd=None, fail=None, env=None):
+        e = dict(os.environ)
+        if fail:
+            e['INSTALL_BASE_FAIL'] = fail
+        if env:
+            e.update(env)
+        return subprocess.run([sys.executable, str(INSTALL), *args],
+                              capture_output=True, text=True, cwd=cwd, env=e)
+
+    def make_project(self, base):
+        proj = base / 'proj'
+        proj.mkdir()
+        return proj
+
+    def backups(self, base):
+        return sorted(base.rglob('.install-base-backup-*'))
+
+    def test_failed_eviction_never_deletes_the_original(self):
+        """If the eviction move itself fails, the original file must stay
+        where it was -- a rollback may not delete content that was never
+        committed to the backup."""
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp).resolve()
+            src, head = make_clone(base)
+            target = base / 'home/skills'
+            (target / 'demo').mkdir(parents=True)
+            (target / 'demo/old.md').write_text('ORIGINAL')
+            result = self.run_install('--apply', '--source', str(src), '--ref', head,
+                                      '--target', str(target), fail='evict:demo')
+            self.assertNotEqual(result.returncode, 0)
+            self.assertTrue((target / 'demo/old.md').is_file())
+            self.assertEqual((target / 'demo/old.md').read_text(), 'ORIGINAL')
+            manifest = json.loads((self.backups(base)[0] / 'manifest.json').read_text())
+            self.assertTrue(manifest.get('rolled_back'))
+
+    def test_partial_rollback_retry_skips_restored_paths(self):
+        """A retry after a partial restore must not flag already-restored
+        paths as post-install edits."""
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp).resolve()
+            src, head = make_clone(base)
+            t1 = base / 'one/skills'
+            t2 = base / 'two/skills'
+            for t in (t1, t2):
+                (t / 'adr').mkdir(parents=True)
+                (t / 'adr/old.md').write_text('old ' + t.parts[-2])
+            self.assertEqual(self.run_install(
+                '--apply', '--source', str(src), '--ref', head,
+                '--target', str(t1), '--target', str(t2)).returncode, 0)
+            backup = [b for b in self.backups(base)
+                      if (b / 'manifest.json').is_file()][0]
+            t1.chmod(0o555)  # one target restores, the other cannot
+            try:
+                result = self.run_install('--rollback', str(backup))
+            finally:
+                t1.chmod(0o755)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('rollback incomplete', result.stderr)
+            # the t2 side really did restore (its old files are back)
+            self.assertTrue((t2 / 'adr/old.md').is_file())
+            result = self.run_install('--rollback', str(backup))
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertTrue((t1 / 'adr/old.md').is_file())
+            manifest = json.loads((backup / 'manifest.json').read_text())
+            self.assertTrue(manifest.get('rolled_back'))
+
+    def test_apply_refused_while_mutex_or_journal_pending(self):
+        """The mutex guards the whole transaction; a crashed run's journal
+        blocks the next apply until --rollback replays it."""
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp).resolve()
+            src, head = make_clone(base)
+            proj = self.make_project(base)
+            lockfile = proj / '.skills-lock.json.lock'
+            lockfile.write_text('stale\n')
+            result = self.run_install('--apply', '--project', '--source', str(src),
+                                      '--ref', head, cwd=proj)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('another run holds', result.stderr)
+            lockfile.unlink()
+            backup = proj / '.install-base-backup-20000101-000000'
+            backup.mkdir()
+            (backup / 'manifest.json').write_text(json.dumps({
+                'ops': [{'op': 'copy', 'path': str(proj / '.agents/skills/x'),
+                         'state': 'active'}]}))
+            result = self.run_install('--apply', '--project', '--source', str(src),
+                                      '--ref', head, cwd=proj)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('unfinished transactions', result.stderr)
+
+    def test_lock_path_escape_rejected_on_uninstall(self):
+        """A lock entry naming a path outside the project (or through an
+        escaping ancestor symlink) must never drive a removal."""
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp).resolve()
+            src, head = make_clone(base)
+            proj = self.make_project(base)
+            outside = base / 'outside'
+            (outside / 'x').mkdir(parents=True)
+            (outside / 'x/keep.md').write_text('keep')
+            bad = {'version': 1, 'skills': {'x': {
+                'source_repo': 'local', 'source_path': 'skills/x',
+                'source_commit': head, 'sha256': 'x', 'required_by': ['one'],
+                'targets': ['../outside/x'], 'links': []}}}
+            (proj / '.skills-lock.json').write_text(json.dumps(bad))
+            result = self.run_install('--apply', '--project', '--uninstall', 'one',
+                                      cwd=proj)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertTrue((outside / 'x/keep.md').is_file())
+            # escaping ancestor symlink: .agents resolves outside the project
+            (proj / '.claude').symlink_to(outside)
+            bad['skills']['x']['targets'] = ['.claude/skills/x']
+            (proj / '.skills-lock.json').write_text(json.dumps(bad))
+            result = self.run_install('--apply', '--project', '--uninstall', 'one',
+                                      cwd=proj)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('escapes', result.stderr)
+
+    def test_provenance_keeps_real_commit_and_shared_guard(self):
+        """Installing a second suite at a newer commit must not rewrite the
+        provenance of members it did not touch, and a shared payload may not
+        change under one owner without --force."""
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp).resolve()
+            skills = [('x', 'skills/x'), ('y', 'skills/y'), ('z', 'skills/z')]
+            suites = {
+                'one': suite([('x', 'skills/x', []), ('y', 'skills/y', [])]),
+                'two': suite([('y', 'skills/y', []), ('z', 'skills/z', [])]),
+            }
+            src, head1 = make_clone(base, skills=skills, suites=suites)
+            proj = self.make_project(base)
+            self.assertEqual(self.run_install(
+                '--apply', '--project', '--source', str(src),
+                '--ref', head1, '--suite', 'one', cwd=proj).returncode, 0)
+            # head2 changes z only; y is shared and identical at both commits
+            (src / 'skills/z/SKILL.md').write_text('---\nname: z\n---\nNEW\n')
+            head2 = commit_all(src, 'change z')
+            self.assertEqual(self.run_install(
+                '--apply', '--project', '--source', str(src),
+                '--ref', head2, '--suite', 'two', cwd=proj).returncode, 0)
+            lock = json.loads((proj / '.skills-lock.json').read_text())
+            self.assertEqual(lock['skills']['x']['source_commit'], head1)
+            self.assertEqual(lock['skills']['y']['source_commit'], head1)
+            self.assertEqual(lock['skills']['z']['source_commit'], head2)
+            # head3 changes y; suite two may not move it under 'one's claim
+            (src / 'skills/y/SKILL.md').write_text('---\nname: y\n---\nNEW\n')
+            head3 = commit_all(src, 'change y')
+            result = self.run_install('--apply', '--project', '--update',
+                                      '--source', str(src), '--ref', head3,
+                                      '--suite', 'two', cwd=proj)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('other owners', result.stderr)
+            self.assertIn('body',
+                          (proj / '.agents/skills/y/SKILL.md').read_text())
+
+    def test_ask_me_payload_digest_matches_and_reinstall_keeps(self):
+        """The installed ask-me payload (with source.json + index files) is
+        what the lock digests, so a reinstall reports keep/dedup, never
+        diverged, and a plain rollback is not mistaken for user edits."""
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp).resolve()
+            src, head = make_clone(base)
+            proj = self.make_project(base)
+            self.assertEqual(self.run_install(
+                '--apply', '--project', '--source', str(src),
+                '--ref', head, '--skill', 'ask-me', cwd=proj).returncode, 0)
+            backup = self.backups(proj)[0]
+            lock = json.loads((proj / '.skills-lock.json').read_text())
+            installed = proj / '.agents/skills/ask-me'
+            self.assertTrue((installed / 'source.json').is_file())
+            self.assertTrue((installed / 'index.json').is_file())
+            self.assertEqual(json.loads((installed / 'source.json').read_text())
+                             ['commit'], head)
+            result = self.run_install('--apply', '--project', '--source', str(src),
+                                      '--ref', head, '--skill', 'ask-me', cwd=proj)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertNotIn('diverged', result.stderr + result.stdout)
+            result = self.run_install('--rollback', str(backup), cwd=proj)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertFalse(installed.exists())
+
+    def test_snapshot_cache_verified_against_git_objects(self):
+        """A tampered snapshot is rebuilt, never trusted on its marker."""
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp).resolve()
+            src, head = make_clone(base)
+            t1 = base / 'one/skills'
+            self.assertEqual(self.run_install(
+                '--apply', '--source', str(src), '--ref', head,
+                '--target', str(t1)).returncode, 0)
+            snap = (base / 'one/.install-base-snapshots' / head)
+            victim = snap / 'skills/demo/SKILL.md'
+            victim.write_text('TAMPERED')
+            t2 = base / 'one/second-skills'  # same parent -> same snapshot root
+            self.assertEqual(self.run_install(
+                '--apply', '--source', str(src), '--ref', head,
+                '--target', str(t2)).returncode, 0)
+            self.assertIn('demo skill', victim.read_text())  # rebuilt
+            self.assertIn('demo skill',
+                          (t2 / 'demo/SKILL.md').resolve().read_text())
+
+    def test_executable_bit_survives_export_and_install(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp).resolve()
+            skills = [('demo', 'skills/demo')]
+            src, head = make_clone(base, skills=skills)
+            script = src / 'skills/demo/run.sh'
+            script.write_text('#!/bin/sh\necho hi\n')
+            script.chmod(0o755)
+            head = commit_all(src, 'add exec')
+            target = base / 'home/skills'
+            self.assertEqual(self.run_install(
+                '--apply', '--source', str(src), '--ref', head,
+                '--target', str(target)).returncode, 0)
+            snap_script = target / 'demo/run.sh'
+            self.assertTrue(snap_script.stat().st_mode & 0o111)
+
+    def test_tree_digest_has_no_serialization_collision(self):
+        """Two different trees that once serialized identically now differ,
+        and the executable bit is part of the digest."""
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            one = base / 'one'
+            one.mkdir()
+            (one / 'a').write_bytes(b'X\0b\0file\0Y')
+            two = base / 'two'
+            two.mkdir()
+            (two / 'a').write_text('X')
+            (two / 'b').write_text('Y')
+            import importlib.machinery
+            import importlib.util
+            loader = importlib.machinery.SourceFileLoader('ib', str(INSTALL))
+            spec = importlib.util.spec_from_loader('ib', loader)
+            ib = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(ib)
+            self.assertNotEqual(ib.tree_digest(one), ib.tree_digest(two))
+            exe = base / 'exe'
+            exe.mkdir()
+            f = exe / 'a'
+            f.write_text('X')
+            d1 = ib.tree_digest(exe)
+            f.chmod(0o755)
+            self.assertNotEqual(d1, ib.tree_digest(exe))
+
+    def test_two_qualified_same_name_sources_conflict(self):
+        """Two different entities named the same must error, not let the
+        later link silently overwrite the earlier one."""
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp).resolve()
+            src, head = make_clone(base, skills=[('tdd', 'vendor/a/tdd'),
+                                                 ('tdd', 'vendor/b/tdd')])
+            target = base / 'home/skills'
+            result = self.run_install('--apply', '--source', str(src), '--ref', head,
+                                      '--target', str(target),
+                                      '--skill', 'vendor/a/tdd',
+                                      '--skill', 'vendor/b/tdd')
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('two sources', result.stderr)
+
+    def test_backup_dir_stays_out_of_version_control(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp).resolve()
+            src, head = make_clone(base)
+            proj = self.make_project(base)
+            subprocess.run(['git', 'init', '-q', str(proj)], check=True)
+            self.assertEqual(self.run_install(
+                '--apply', '--project', '--source', str(src),
+                '--ref', head, cwd=proj).returncode, 0)
+            backups = [b for b in proj.glob('.install-base-backup-*')]
+            self.assertTrue(backups)
+            self.assertTrue((backups[0] / '.gitignore').is_file())
+            status = subprocess.check_output(
+                ['git', '-C', str(proj), 'status', '--porcelain',
+                 '--untracked-files=all'], text=True)
+            for line in status.splitlines():
+                self.assertNotIn('.install-base-backup-', line)
+                self.assertNotIn('.install-base-snapshots', line)
+
+    def test_installed_payload_carries_license(self):
+        """Project installs inject the applicable legal files into each
+        member payload that does not carry its own."""
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp).resolve()
+            src, head = make_clone(base, skills=[('tdd', 'vendor/matt/tdd'),
+                                                 ('ask-me', 'skills/ask-me')])
+            (src / 'vendor/matt').mkdir(exist_ok=True)
+            (src / 'vendor/matt/LICENSE').write_text('MIT upstream')
+            (src / 'LICENSE').write_text('collection license')
+            head = commit_all(src, 'licenses')
+            proj = self.make_project(base)
+            self.assertEqual(self.run_install(
+                '--apply', '--project', '--source', str(src), '--ref', head,
+                '--skill', 'vendor/matt/tdd', '--skill', 'ask-me',
+                cwd=proj).returncode, 0)
+            vendored = proj / '.agents/skills/tdd/LICENSE'
+            local = proj / '.agents/skills/ask-me/LICENSE'
+            self.assertEqual(vendored.read_text(), 'MIT upstream')
+            self.assertEqual(local.read_text(), 'collection license')
 
 
 if __name__ == '__main__':

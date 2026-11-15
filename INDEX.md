@@ -71,12 +71,12 @@ Heavier workflow suite; load on demand. matt-flow is the fork's flow map. Bucket
 | Skill | Summary | Path | Depends |
 | --- | --- | --- | --- |
 | `ask-matt` | Ask which skill or flow fits your situation. | `vendor/matt/skills/engineering/ask-matt/SKILL.md` |  |
-| `code-review` | Review the changes since a fixed point (commit, branch, tag, or merge-base) along two axes: Standards (does the code follow this repo's documented coding standa | `vendor/matt/skills/engineering/code-review/SKILL.md` |  |
+| `code-review` | Review the changes since a fixed point (commit, branch, tag, or merge-base) along two axes: Standards (does the code follow this repo's documented coding standa | `vendor/matt/skills/engineering/code-review/SKILL.md` | setup-matt-pocock-skills |
 | `codebase-design` | Shared vocabulary for designing deep modules. | `vendor/matt/skills/engineering/codebase-design/SKILL.md` |  |
 | `diagnosing-bugs` | Diagnosis loop for hard bugs and performance regressions. | `vendor/matt/skills/engineering/diagnosing-bugs/SKILL.md` |  |
 | `domain-modeling` | Build and sharpen a project's domain model. | `vendor/matt/skills/engineering/domain-modeling/SKILL.md` |  |
-| `grill-with-docs` | A relentless interview to sharpen a plan or design, which also creates docs (ADR's and glossary) as we go. | `vendor/matt/skills/engineering/grill-with-docs/SKILL.md` |  |
-| `implement` | Implement a piece of work based on a spec or set of tickets. | `vendor/matt/skills/engineering/implement/SKILL.md` |  |
+| `grill-with-docs` | A relentless interview to sharpen a plan or design, which also creates docs (ADR's and glossary) as we go. | `vendor/matt/skills/engineering/grill-with-docs/SKILL.md` | domain-modeling, grilling |
+| `implement` | Implement a piece of work based on a spec or set of tickets. | `vendor/matt/skills/engineering/implement/SKILL.md` | code-review, tdd |
 | `implement-spec` | Implement the result of /to-spec and /to-tickets in code. | `vendor/matt/skills/engineering/implement-spec/SKILL.md` |  |
 | `improve-codebase-architecture` | Scan a codebase for deepening opportunities, present them as a visual HTML report, then grill through whichever one you pick. | `vendor/matt/skills/engineering/improve-codebase-architecture/SKILL.md` |  |
 | `matt-flow` | Flow map for the Matt Pocock skill suite. | `vendor/matt/skills/engineering/matt-flow/SKILL.md` |  |
@@ -85,9 +85,9 @@ Heavier workflow suite; load on demand. matt-flow is the fork's flow map. Bucket
 | `research` | Investigate a question against high-trust primary sources and capture the findings as a Markdown file in the repo. | `vendor/matt/skills/engineering/research/SKILL.md` |  |
 | `retro` | Conduct a retrospective on a coding session. | `vendor/matt/skills/engineering/retro/SKILL.md` |  |
 | `setup-matt-pocock-skills` | Configure this repo for the engineering skills: set up its issue tracker, triage label vocabulary, and domain doc layout. | `vendor/matt/skills/engineering/setup-matt-pocock-skills/SKILL.md` |  |
-| `tdd` | Test-driven development. | `vendor/matt/skills/engineering/tdd/SKILL.md` |  |
-| `to-spec` | Turn the current conversation into a spec and publish it to the project issue tracker: no interview, just synthesis of what you've already discussed. | `vendor/matt/skills/engineering/to-spec/SKILL.md` |  |
-| `to-tickets` | Break a plan, spec, or the current conversation into a set of tracer-bullet tickets, each declaring its blocking edges, published to the configured tracker (edg | `vendor/matt/skills/engineering/to-tickets/SKILL.md` |  |
+| `tdd` | Test-driven development. | `vendor/matt/skills/engineering/tdd/SKILL.md` | codebase-design |
+| `to-spec` | Turn the current conversation into a spec and publish it to the project issue tracker: no interview, just synthesis of what you've already discussed. | `vendor/matt/skills/engineering/to-spec/SKILL.md` | setup-matt-pocock-skills |
+| `to-tickets` | Break a plan, spec, or the current conversation into a set of tracer-bullet tickets, each declaring its blocking edges, published to the configured tracker (edg | `vendor/matt/skills/engineering/to-tickets/SKILL.md` | setup-matt-pocock-skills |
 | `triage` | Move issues and external PRs through a state machine of triage roles, categorise, verify, grill if needed, and write agent-ready briefs. | `vendor/matt/skills/engineering/triage/SKILL.md` |  |
 | `wayfinder` | Plan a huge chunk of work (more than one agent session can hold) as a shared map of decision tickets on your issue tracker, and resolve them one at a time until | `vendor/matt/skills/engineering/wayfinder/SKILL.md` |  |
 | `wizard` | Generate an interactive bash wizard that walks a human through steps only they can perform. | `vendor/matt/skills/engineering/wizard/SKILL.md` |  |
