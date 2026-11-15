@@ -1435,6 +1435,56 @@ class LockAndSourceTests(unittest.TestCase):
             self.assertFalse(stored.exists())
             self.assertEqual(mod.describe(skill), before)
 
+            # Also verify an uninstall/retire ('move') op where after.kind == 'absent':
+            # retry must not mistake the already-landed original for "re-created after install".
+            moved = target / 'retired-demo'
+            moved.mkdir()
+            (moved / 'SKILL.md').write_text('RETIRED V1')
+            (moved / 'extra.txt').write_text('RETIRED EXTRA')
+            moved_before = mod.describe(moved)
+            moved_stored = backup / 'files/1-retired-demo'
+            mod.os.rename(moved, moved_stored)
+            move_ops = [{
+                'op': 'move',
+                'path': str(moved),
+                'backup': 'files/1-retired-demo',
+                'state': 'done',
+                'backup_committed': True,
+                'before': moved_before,
+                'after': {'kind': 'absent', 'sha256': 'absent'},
+            }]
+
+            def exdev_on_moved(src_p, dst_p):
+                if Path(src_p) == moved_stored and Path(dst_p) == moved:
+                    raise OSError(errno.EXDEV, 'Cross-device link')
+                return real_rename(src_p, dst_p)
+
+            def partial_fail_moved_cleanup(p):
+                if Path(p) == moved_stored:
+                    (moved_stored / 'extra.txt').unlink(missing_ok=True)
+                    raise OSError(errno.EACCES, 'simulated cleanup failure')
+                return real_remove(p)
+
+            mod.os.rename = exdev_on_moved
+            mod.remove = partial_fail_moved_cleanup
+            try:
+                mp1, me1 = mod.rollback(move_ops, backup, verify=True, save=save)
+            finally:
+                mod.os.rename = real_rename
+                mod.remove = real_remove
+
+            self.assertEqual(mp1, [])
+            self.assertEqual(len(me1), 1)
+            self.assertEqual(move_ops[0].get('restore_stage'), 'target_restored')
+            self.assertEqual(mod.describe(moved), moved_before)
+
+            mp2, me2 = mod.rollback(move_ops, backup, verify=True, save=save)
+            self.assertEqual(mp2, [])
+            self.assertEqual(me2, [])
+            self.assertTrue(move_ops[0].get('restored'))
+            self.assertFalse(moved_stored.exists())
+            self.assertEqual(mod.describe(moved), moved_before)
+
 
 if __name__ == '__main__':
     unittest.main()

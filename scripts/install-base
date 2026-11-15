@@ -915,14 +915,20 @@ def rollback(ops, backup_dir, verify, save=None):
     if verify:
         for op in live:
             after = op.get('after')
-            if not after or after.get('sha256') in (None, 'absent'):
+            if not after:
                 continue
             path = Path(op['path'])
             stored = backup_dir / op['backup'] if op.get('backup') else None
             if op.get('restore_stage'):
                 if _restore_resumable(op, path, stored):
                     continue  # last restore died mid-op; resume below
-                if describe(path) == after:
+                before = op.get('before') or {}
+                backup_intact = before.get('kind') == 'absent' or (
+                    stored is not None
+                    and (stored.exists() or stored.is_symlink())
+                    and describe(stored) == before
+                )
+                if describe(path) == after and backup_intact:
                     # the recorded stage never landed (died before/inside
                     # remove); restart this op from scratch
                     op.pop('restore_stage', None)
@@ -933,14 +939,13 @@ def rollback(ops, backup_dir, verify, save=None):
                                 'and neither the installed state nor the '
                                 'original verifies; manual recovery needed')
                 continue
-            if describe(path) != after:
+            if after.get('kind') == 'absent':
+                if path.exists() or path.is_symlink():
+                    problems.append(f"{op['path']} was re-created after install")
+            elif after.get('sha256') not in (None, 'absent') \
+                    and describe(path) != after:
                 problems.append(f'{path} changed since install '
                                 f"(was {after['kind']} {after['sha256'][:12]}…)")
-        for op in live:
-            after = op.get('after')
-            if after and after.get('kind') == 'absent' \
-                    and (Path(op['path']).exists() or Path(op['path']).is_symlink()):
-                problems.append(f"{op['path']} was re-created after install")
         if problems:
             return problems, []
     errors = []
