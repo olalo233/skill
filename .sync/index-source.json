@@ -61,11 +61,8 @@
   },
   "retired": {
     "*": [
-      "adr",
-      "brainstorming",
       "repo-eval",
-      "service-archive",
-      "work-archive"
+      "service-archive"
     ],
     "~/.gemini/skills": [
       "codebase-design",
