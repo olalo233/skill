@@ -11,6 +11,7 @@ present as sibling directories; they do not need to be read.
 | `ask-me` | Use when the user asks which skill fits a task, or invokes /ask-me to pick and load a skill from this repository's index. | `skills/ask-me/SKILL.md` |  |
 | `eli5` | Explain a topic like I'm a 5 year old. | `skills/eli5/SKILL.md` | html |
 | `html` | Use when the user asks for a visual explanatory document in HTML about a concept, mechanism, or research finding. | `skills/html/SKILL.md` |  |
+| `should-i-know` | On explicit request, debrief the user on what they must decide, material actions and judgment calls, and what is unverified: quick from context by default, or a | `skills/should-i-know/SKILL.md` |  |
 | `show-me` | Use when the user asks to see or understand the current topic visually, with concise diagrams, code-shape sketches, and focused HTML artifacts. | `skills/show-me/SKILL.md` | html |
 | `wait-what` | On explicit request, explain an unclear message again in clear Chinese or English without changing the task. | `skills/wait-what/SKILL.md` |  |
 

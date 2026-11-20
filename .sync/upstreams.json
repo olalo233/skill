@@ -2,6 +2,7 @@
   "version": 1,
   "local_skills": [
     "ask-me",
+    "should-i-know",
     "system-design",
     "ux-spec"
   ],

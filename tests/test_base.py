@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-MANUAL = ['ask-me', 'wait-what', 'eli5']
+MANUAL = ['ask-me', 'wait-what', 'should-i-know', 'eli5']
 AUTO = ['html', 'show-me']
 STRONG = re.compile(r'\b(must|always|proactive|proactively|automatically)\b', re.I)
 

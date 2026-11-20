@@ -1,0 +1,5 @@
+interface:
+  display_name: "Should I Know? / 我该知道什么"
+  short_description: "Debrief: decisions needed, judgment calls made, what is unverified"
+policy:
+  allow_implicit_invocation: false

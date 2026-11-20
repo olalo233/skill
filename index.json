@@ -63,6 +63,13 @@
       "depends": []
     },
     {
+      "name": "should-i-know",
+      "suite": "base",
+      "summary": "On explicit request, debrief the user on what they must decide, material actions and judgment calls, and what is unverified: quick from context by default, or a",
+      "path": "skills/should-i-know/SKILL.md",
+      "depends": []
+    },
+    {
       "name": "show-me",
       "suite": "base",
       "summary": "Use when the user asks to see or understand the current topic visually, with concise diagrams, code-shape sketches, and focused HTML artifacts.",
